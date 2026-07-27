@@ -29,7 +29,6 @@ const paystack = axios.create({
 */
 
 async function createCustomer(data) {
-
     const response = await paystack.post("/customer", {
         email: data.email,
         first_name: data.first_name,
@@ -38,7 +37,29 @@ async function createCustomer(data) {
     });
 
     return response.data.data;
+}
 
+/*
+|--------------------------------------------------------------------------
+| Identify Customer
+|--------------------------------------------------------------------------
+*/
+
+async function identifyCustomer(customerCode, data) {
+    const response = await paystack.post(
+        `/customer/${customerCode}/identification`,
+        {
+            country: "NG",
+            type: "bank_account",
+            account_number: data.account_number,
+            bvn: data.bvn,
+            bank_code: data.bank_code,
+            first_name: data.first_name,
+            last_name: data.last_name
+        }
+    );
+
+    return response.data.data;
 }
 
 /*
@@ -48,26 +69,18 @@ async function createCustomer(data) {
 */
 
 async function createDedicatedAccount(customerCode) {
-
     try {
-
         const response = await paystack.post("/dedicated_account", {
             customer: customerCode,
             preferred_bank: "wema-bank"
         });
 
         return response.data.data;
-
     } catch (error) {
-
         console.error("PAYSTACK DEDICATED ACCOUNT ERROR:");
-
         console.error(error.response?.data);
-
         throw error;
-
     }
-
 }
 
 /*
@@ -77,13 +90,11 @@ async function createDedicatedAccount(customerCode) {
 */
 
 async function verifyAccount(accountNumber, bankCode) {
-
     const response = await paystack.get(
         `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
     );
 
     return response.data.data;
-
 }
 
 /*
@@ -93,11 +104,9 @@ async function verifyAccount(accountNumber, bankCode) {
 */
 
 async function getBanks() {
-
     const response = await paystack.get("/bank");
 
     return response.data.data;
-
 }
 
 /*
@@ -107,23 +116,15 @@ async function getBanks() {
 */
 
 async function createTransferRecipient(data) {
-
     const response = await paystack.post("/transferrecipient", {
-
         type: "nuban",
-
         name: data.name,
-
         account_number: data.account_number,
-
         bank_code: data.bank_code,
-
         currency: "NGN"
-
     });
 
     return response.data.data;
-
 }
 
 /*
@@ -133,21 +134,14 @@ async function createTransferRecipient(data) {
 */
 
 async function initiateTransfer(data) {
-
     const response = await paystack.post("/transfer", {
-
         source: "balance",
-
         amount: data.amount, // Kobo
-
         recipient: data.recipient_code,
-
         reason: data.reason
-
     });
 
     return response.data.data;
-
 }
 
 /*
@@ -157,13 +151,11 @@ async function initiateTransfer(data) {
 */
 
 async function verifyTransaction(reference) {
-
     const response = await paystack.get(
         `/transaction/verify/${reference}`
     );
 
     return response.data.data;
-
 }
 
 /*
@@ -173,19 +165,12 @@ async function verifyTransaction(reference) {
 */
 
 module.exports = {
-
     createCustomer,
-
+    identifyCustomer,
     createDedicatedAccount,
-
     verifyAccount,
-
     getBanks,
-
     createTransferRecipient,
-
     initiateTransfer,
-
     verifyTransaction
-
 };
