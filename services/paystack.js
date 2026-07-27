@@ -49,12 +49,24 @@ async function createCustomer(data) {
 
 async function createDedicatedAccount(customerCode) {
 
-    const response = await paystack.post("/dedicated_account", {
-        customer: customerCode,
-        preferred_bank: "wema-bank"
-    });
+    try {
 
-    return response.data.data;
+        const response = await paystack.post("/dedicated_account", {
+            customer: customerCode,
+            preferred_bank: "wema-bank"
+        });
+
+        return response.data.data;
+
+    } catch (error) {
+
+        console.error("PAYSTACK DEDICATED ACCOUNT ERROR:");
+
+        console.error(error.response?.data);
+
+        throw error;
+
+    }
 
 }
 
