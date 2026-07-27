@@ -6,6 +6,7 @@ const cors = require("cors");
 const customerRoutes = require("./routes/customer");
 const dedicatedAccountRoutes = require("./routes/dedicatedAccount");
 const webhookRoutes = require("./routes/webhook");
+const withdrawRoutes = require("./routes/withdraw");
 
 const app = express();
 
@@ -18,6 +19,7 @@ const app = express();
 app.use(cors());
 
 app.use(express.json());
+
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -41,6 +43,8 @@ app.get("/", (req, res) => {
 */
 
 app.use("/api/customer", customerRoutes);
+
+app.use("/api/withdraw", withdrawRoutes);
 
 app.use("/api/dedicated-account", dedicatedAccountRoutes);
 
