@@ -13,6 +13,7 @@ const app = express();
 app.use(cors());
 
 app.use("/api/webhook", express.raw({ type: "application/json" }));
+app.use("/api/webhook", webhookRoutes);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -27,7 +28,6 @@ app.get("/", (req, res) => {
 app.use("/api/customer", customerRoutes);
 app.use("/api/withdraw", withdrawRoutes);
 app.use("/api/dedicated-account", dedicatedAccountRoutes);
-app.use("/api/webhook", webhookRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
