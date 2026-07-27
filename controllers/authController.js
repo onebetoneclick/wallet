@@ -8,21 +8,32 @@ const supabase = require("../config/supabase");
 
 exports.sendOTP = async (req, res) => {
     try {
-        const { email } = req.body;
+        const { type, email, phone } = req.body;
 
-        if (!email) {
+        if (!type || !["email", "phone"].includes(type)) {
             return res.status(400).json({
                 success: false,
-                message: "Email is required."
+                message: "type must be either 'email' or 'phone'."
             });
         }
 
-        const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-                shouldCreateUser: false
-            }
-        });
+        if (type === "email" && !email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required for email OTP."
+            });
+        }
+
+        if (type === "phone" && !phone) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone is required for phone OTP."
+            });
+        }
+
+        const payload = type === "email" ? { email } : { phone };
+
+        const { error } = await supabase.auth.signInWithOtp(payload);
 
         if (error) {
             throw error;
@@ -49,20 +60,41 @@ exports.sendOTP = async (req, res) => {
 
 exports.verifyOTP = async (req, res) => {
     try {
-        const { email, token } = req.body;
+        const { type, email, phone, token } = req.body;
 
-        if (!email || !token) {
+        if (!type || !["email", "phone"].includes(type)) {
             return res.status(400).json({
                 success: false,
-                message: "Email and token are required."
+                message: "type must be either 'email' or 'phone'."
             });
         }
 
-        const { data, error } = await supabase.auth.verifyOtp({
-            email,
-            token,
-            type: "email"
-        });
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                message: "token is required."
+            });
+        }
+
+        if (type === "email" && !email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required for email OTP verification."
+            });
+        }
+
+        if (type === "phone" && !phone) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone is required for phone OTP verification."
+            });
+        }
+
+        const payload = type === "email"
+            ? { email, token, type: "email" }
+            : { phone, token, type: "sms" };
+
+        const { data, error } = await supabase.auth.verifyOtp(payload);
 
         if (error) {
             throw error;
