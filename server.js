@@ -7,6 +7,7 @@ const customerRoutes = require("./routes/customer");
 const dedicatedAccountRoutes = require("./routes/dedicatedAccount");
 const webhookRoutes = require("./routes/webhook");
 const withdrawRoutes = require("./routes/withdraw");
+const authRoutes = require("./routes/auth");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/customer", customerRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/withdraw", withdrawRoutes);
 app.use("/api/dedicated-account", dedicatedAccountRoutes);
 
