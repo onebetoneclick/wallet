@@ -1,0 +1,20 @@
+{
+  "name": "onebetoneclick-wallet-backend",
+  "version": "1.0.0",
+  "description": "Backend for One Bet One Click wallet, Paystack customer creation, and dedicated NUBAN generation",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
