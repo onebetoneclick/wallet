@@ -9,7 +9,9 @@ const {
 
 /*
 |--------------------------------------------------------------------------
-| Check Bank Account
+| Verify Bank Account
+|--------------------------------------------------------------------------
+| POST /api/wallet/check-account
 |--------------------------------------------------------------------------
 */
 
@@ -17,31 +19,45 @@ exports.checkAccount = async (req, res) => {
 
     try {
 
-        const { account_number, bank_code } = req.body;
+        const {
+
+            account_number,
+            bank_code
+
+        } = req.body;
 
         if (!account_number || !bank_code) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message: "Account number and bank code are required."
+
             });
 
         }
 
         const account = await verifyAccount(
+
             account_number,
             bank_code
+
         );
 
         return res.status(200).json({
 
             success: true,
 
+            message: "Account verified successfully.",
+
             data: account
 
         });
 
     } catch (err) {
+
+        console.error(err);
 
         return res.status(500).json({
 
@@ -61,46 +77,67 @@ exports.checkAccount = async (req, res) => {
 |--------------------------------------------------------------------------
 | Send Wallet Activation OTP
 |--------------------------------------------------------------------------
+| User email has already been verified during signup.
+| Send another OTP before wallet activation.
+|--------------------------------------------------------------------------
 */
 
 exports.sendActivationOTP = async (req, res) => {
 
     try {
 
-        const { email } = req.body;
+        const {
+
+            email
+
+        } = req.body;
 
         if (!email) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message: "Email is required."
+
             });
 
         }
 
-        const { error } = await supabase.auth.signInWithOtp({
+        const {
+
+            error
+
+        } = await supabase.auth.signInWithOtp({
 
             email
 
         });
 
-        if (error) throw error;
+        if (error) {
+
+            throw error;
+
+        }
 
         return res.status(200).json({
 
             success: true,
 
-            message: "OTP sent successfully."
+            message: "Wallet activation OTP sent."
 
         });
 
     } catch (err) {
 
+        console.error(err);
+
         return res.status(500).json({
 
             success: false,
 
-            message: err.message
+            message:
+                err.message
 
         });
 
@@ -110,7 +147,7 @@ exports.sendActivationOTP = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| Verify Wallet OTP
+| Verify Wallet Activation OTP
 |--------------------------------------------------------------------------
 */
 
@@ -125,209 +162,44 @@ exports.verifyActivationOTP = async (req, res) => {
 
         } = req.body;
 
-        const { data, error } = await supabase.auth.verifyOtp({
+        if (!email || !token) {
 
-            email,
+            return res.status(400).json({
 
-            token,
+                success: false,
 
-            type: "email"
-
-        });
-
-        if (error) throw error;
-
-        return res.status(200).json({
-
-            success: true,
-
-            message: "OTP verified.",
-
-            data
-
-        });
-
-    } catch (err) {
-
-        return res.status(500).json({
-
-            success: false,
-
-            message: err.message
-
-        });
-
-    }
-
-};
-
-/*
-|--------------------------------------------------------------------------
-| Activate Wallet
-|--------------------------------------------------------------------------
-*/
-
-exports.activateWallet = async (req, res) => {
-
-    try {
-
-        const {
-
-            user_id,
-            email,
-            first_name,
-            last_name,
-            phone,
-            bvn,
-            account_number,
-            bank_code
-
-        } = req.body;
-
-        /*
-        ----------------------------------------------------------
-        Check Existing Wallet
-        ----------------------------------------------------------
-        */
-
-        const { data: profile } = await supabase
-
-            .from("profiles")
-
-            .select("*")
-
-            .eq("user_id", user_id)
-
-            .single();
-
-        if (
-            profile &&
-            profile.account_number &&
-            profile.paystack_customer_code
-        ) {
-
-            return res.status(200).json({
-
-                success: true,
-
-                message:
-                    "Wallet already exists.",
-
-                data: {
-
-                    account_number:
-                        profile.account_number,
-
-                    account_name:
-                        profile.account_name,
-
-                    bank_name:
-                        profile.bank_name
-
-                }
+                message: "Email and OTP are required."
 
             });
 
         }
 
-        /*
-        ----------------------------------------------------------
-        Create Customer
-        ----------------------------------------------------------
-        */
+        const {
 
-        const customer = await createCustomer({
+            data,
+            error
+
+        } = await supabase.auth.verifyOtp({
 
             email,
-
-            first_name,
-
-            last_name,
-
-            phone
+            token,
+            type: "email"
 
         });
 
-        /*
-        ----------------------------------------------------------
-        Identify Customer
-        ----------------------------------------------------------
-        */
+        if (error) {
 
-        await identifyCustomer(
+            throw error;
 
-            customer.customer_code,
-
-            {
-
-                country: "NG",
-
-                type: "bank_account",
-
-                account_number,
-
-                bank_code,
-
-                bvn,
-
-                first_name,
-
-                last_name
-
-            }
-
-        );
-
-        /*
-        ----------------------------------------------------------
-        Generate Dedicated Account
-        ----------------------------------------------------------
-        */
-
-        const dedicated = await createDedicatedAccount(
-
-            customer.customer_code
-
-        );
-
-        /*
-        ----------------------------------------------------------
-        Save
-        ----------------------------------------------------------
-        */
-
-        await supabase
-
-            .from("profiles")
-
-            .update({
-
-                paystack_customer_code:
-                    customer.customer_code,
-
-                account_number:
-                    dedicated.account_number,
-
-                account_name:
-                    dedicated.account_name,
-
-                bank_name:
-                    dedicated.bank.name,
-
-                wallet_activated: true
-
-            })
-
-            .eq("user_id", user_id);
+        }
 
         return res.status(200).json({
 
             success: true,
 
-            message:
-                "Wallet activated successfully.",
+            message: "OTP verified successfully.",
 
-            data: dedicated
+            data
 
         });
 
@@ -340,7 +212,6 @@ exports.activateWallet = async (req, res) => {
             success: false,
 
             message:
-                err.response?.data?.message ||
                 err.message
 
         });
