@@ -8,7 +8,7 @@ const dedicatedAccountRoutes = require("./routes/dedicatedAccount");
 const webhookRoutes = require("./routes/webhook");
 const withdrawRoutes = require("./routes/withdraw");
 const authRoutes = require("./routes/auth");
-
+const walletRoutes = require("./routes/wallet");
 const app = express();
 
 app.use(cors());
@@ -30,7 +30,7 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/withdraw", withdrawRoutes);
 app.use("/api/dedicated-account", dedicatedAccountRoutes);
-
+app.use("/api/wallet", walletRoutes);
 app.use((req, res) => {
   res.status(404).json({
     success: false,
