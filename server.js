@@ -1,247 +1,127 @@
 require("dotenv").config();
 
-const axios = require("axios");
+const express = require("express");
+const cors = require("cors");
+
+const customerRoutes = require("./routes/customer");
+const dedicatedAccountRoutes = require("./routes/dedicatedAccount");
+const webhookRoutes = require("./routes/webhook");
+const withdrawRoutes = require("./routes/withdraw");
+const authRoutes = require("./routes/auth");
+const walletRoutes = require("./routes/wallet");
+const bankRoutes = require("./routes/bank"); // NEW
+
+const app = express();
 
 /*
 |--------------------------------------------------------------------------
-| Paystack Configuration
+| Middleware
 |--------------------------------------------------------------------------
 */
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+app.use(cors());
 
-if (!PAYSTACK_SECRET_KEY) {
-    throw new Error("PAYSTACK_SECRET_KEY is missing in .env");
-}
+app.use(express.json());
 
-const paystack = axios.create({
-    baseURL: "https://api.paystack.co",
-    headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-        "Content-Type": "application/json"
-    }
+app.use(express.urlencoded({ extended: true }));
+
+/*
+|--------------------------------------------------------------------------
+| Webhook
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+    "/api/webhook",
+    express.raw({ type: "application/json" })
+);
+
+app.use("/api/webhook", webhookRoutes);
+
+/*
+|--------------------------------------------------------------------------
+| Home Route
+|--------------------------------------------------------------------------
+*/
+
+app.get("/", (req, res) => {
+
+    res.status(200).json({
+
+        success: true,
+
+        message: "One Bet One Click Wallet API Running 🚀"
+
+    });
+
 });
 
 /*
 |--------------------------------------------------------------------------
-| Create Customer
+| API Routes
 |--------------------------------------------------------------------------
 */
 
-async function createCustomer(data) {
+app.use("/api/customer", customerRoutes);
 
-    const response = await paystack.post("/customer", {
+app.use("/api/auth", authRoutes);
 
-        email: data.email,
+app.use("/api/withdraw", withdrawRoutes);
 
-        first_name: data.first_name,
+app.use("/api/dedicated-account", dedicatedAccountRoutes);
 
-        last_name: data.last_name,
+app.use("/api/wallet", walletRoutes);
 
-        phone: data.phone
+app.use("/api/bank", bankRoutes); // NEW
+
+/*
+|--------------------------------------------------------------------------
+| 404 Route
+|--------------------------------------------------------------------------
+*/
+
+app.use((req, res) => {
+
+    res.status(404).json({
+
+        success: false,
+
+        message: "Route not found"
 
     });
 
-    return response.data.data;
-
-}
+});
 
 /*
 |--------------------------------------------------------------------------
-| Identify Customer (BVN)
+| Error Handler
 |--------------------------------------------------------------------------
 */
 
-async function identifyCustomer(customerCode, data) {
+app.use((err, req, res, next) => {
 
-    const response = await paystack.post(
+    console.error(err);
 
-        `/customer/${customerCode}/identification`,
+    res.status(err.status || 500).json({
 
-        {
+        success: false,
 
-            country: data.country,
+        message: err.message || "Internal Server Error"
 
-            type: data.type,
+    });
 
-            account_number: data.account_number,
-
-            bvn: data.bvn,
-
-            bank_code: data.bank_code,
-
-            first_name: data.first_name,
-
-            last_name: data.last_name
-
-        }
-
-    );
-
-    return response.data.data;
-
-}
+});
 
 /*
 |--------------------------------------------------------------------------
-| Create Dedicated Account
+| Start Server
 |--------------------------------------------------------------------------
 */
 
-async function createDedicatedAccount(customerCode) {
+const PORT = process.env.PORT || 5000;
 
-    const response = await paystack.post(
+app.listen(PORT, "0.0.0.0", () => {
 
-        "/dedicated_account",
+    console.log(`🚀 Server running on port ${PORT}`);
 
-        {
-
-            customer: customerCode,
-
-            preferred_bank: "wema-bank"
-
-        }
-
-    );
-
-    return response.data.data;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Verify Bank Account
-|--------------------------------------------------------------------------
-*/
-
-async function verifyAccount(accountNumber, bankCode) {
-
-    const response = await paystack.get(
-
-        `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
-
-    );
-
-    return response.data.data;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Get Banks
-|--------------------------------------------------------------------------
-*/
-
-async function getBanks() {
-
-    const response = await paystack.get("/bank");
-
-    return response.data.data;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Create Transfer Recipient
-|--------------------------------------------------------------------------
-*/
-
-async function createTransferRecipient(data) {
-
-    const response = await paystack.post(
-
-        "/transferrecipient",
-
-        {
-
-            type: "nuban",
-
-            name: data.name,
-
-            account_number: data.account_number,
-
-            bank_code: data.bank_code,
-
-            currency: "NGN"
-
-        }
-
-    );
-
-    return response.data.data;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Initiate Transfer
-|--------------------------------------------------------------------------
-*/
-
-async function initiateTransfer(data) {
-
-    const response = await paystack.post(
-
-        "/transfer",
-
-        {
-
-            source: "balance",
-
-            amount: data.amount,
-
-            recipient: data.recipient_code,
-
-            reason: data.reason
-
-        }
-
-    );
-
-    return response.data.data;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Verify Transaction
-|--------------------------------------------------------------------------
-*/
-
-async function verifyTransaction(reference) {
-
-    const response = await paystack.get(
-
-        `/transaction/verify/${reference}`
-
-    );
-
-    return response.data.data;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Exports
-|--------------------------------------------------------------------------
-*/
-
-module.exports = {
-
-    createCustomer,
-
-    identifyCustomer,
-
-    createDedicatedAccount,
-
-    verifyAccount,
-
-    getBanks,
-
-    createTransferRecipient,
-
-    initiateTransfer,
-
-    verifyTransaction
-
-};
+});
