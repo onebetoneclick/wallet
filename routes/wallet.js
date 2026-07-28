@@ -3,28 +3,57 @@ const express = require("express");
 const router = express.Router();
 
 const {
+
     checkAccount,
+
     sendActivationOTP,
+
     verifyActivationOTP,
-    activateWallet
+
+    activateWallet,
+
+    verifyUser
+
 } = require("../controllers/walletController");
 
 /*
 |--------------------------------------------------------------------------
-| Wallet Routes
+| Verify Bank Account
 |--------------------------------------------------------------------------
 */
 
-// Verify bank account and return account name
 router.post("/check-account", checkAccount);
 
-// Send email OTP before wallet activation
+/*
+|--------------------------------------------------------------------------
+| Verify User Details
+|--------------------------------------------------------------------------
+*/
+
+router.post("/verify-user", verifyUser);
+
+/*
+|--------------------------------------------------------------------------
+| Send Wallet Activation OTP
+|--------------------------------------------------------------------------
+*/
+
 router.post("/send-activation-otp", sendActivationOTP);
 
-// Verify email OTP
+/*
+|--------------------------------------------------------------------------
+| Verify Wallet Activation OTP
+|--------------------------------------------------------------------------
+*/
+
 router.post("/verify-activation-otp", verifyActivationOTP);
 
-// Activate wallet / Create or return DVA
+/*
+|--------------------------------------------------------------------------
+| Activate Wallet
+|--------------------------------------------------------------------------
+*/
+
 router.post("/activate", activateWallet);
 
 module.exports = router;
