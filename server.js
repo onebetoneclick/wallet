@@ -1,53 +1,247 @@
 require("dotenv").config();
 
-const express = require("express");
-const cors = require("cors");
+const axios = require("axios");
 
-const customerRoutes = require("./routes/customer");
-const dedicatedAccountRoutes = require("./routes/dedicatedAccount");
-const webhookRoutes = require("./routes/webhook");
-const withdrawRoutes = require("./routes/withdraw");
-const authRoutes = require("./routes/auth");
-const walletRoutes = require("./routes/wallet");
-const app = express();
+/*
+|--------------------------------------------------------------------------
+| Paystack Configuration
+|--------------------------------------------------------------------------
+*/
 
-app.use(cors());
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
-app.use("/api/webhook", express.raw({ type: "application/json" }));
-app.use("/api/webhook", webhookRoutes);
+if (!PAYSTACK_SECRET_KEY) {
+    throw new Error("PAYSTACK_SECRET_KEY is missing in .env");
+}
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "One Bet One Click Wallet API Running 🚀"
-  });
+const paystack = axios.create({
+    baseURL: "https://api.paystack.co",
+    headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json"
+    }
 });
 
-app.use("/api/customer", customerRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/withdraw", withdrawRoutes);
-app.use("/api/dedicated-account", dedicatedAccountRoutes);
-app.use("/api/wallet", walletRoutes);
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found"
-  });
-});
+/*
+|--------------------------------------------------------------------------
+| Create Customer
+|--------------------------------------------------------------------------
+*/
 
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error"
-  });
-});
+async function createCustomer(data) {
 
-const PORT = process.env.PORT || 5000;
+    const response = await paystack.post("/customer", {
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+        email: data.email,
+
+        first_name: data.first_name,
+
+        last_name: data.last_name,
+
+        phone: data.phone
+
+    });
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Identify Customer (BVN)
+|--------------------------------------------------------------------------
+*/
+
+async function identifyCustomer(customerCode, data) {
+
+    const response = await paystack.post(
+
+        `/customer/${customerCode}/identification`,
+
+        {
+
+            country: data.country,
+
+            type: data.type,
+
+            account_number: data.account_number,
+
+            bvn: data.bvn,
+
+            bank_code: data.bank_code,
+
+            first_name: data.first_name,
+
+            last_name: data.last_name
+
+        }
+
+    );
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Create Dedicated Account
+|--------------------------------------------------------------------------
+*/
+
+async function createDedicatedAccount(customerCode) {
+
+    const response = await paystack.post(
+
+        "/dedicated_account",
+
+        {
+
+            customer: customerCode,
+
+            preferred_bank: "wema-bank"
+
+        }
+
+    );
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Verify Bank Account
+|--------------------------------------------------------------------------
+*/
+
+async function verifyAccount(accountNumber, bankCode) {
+
+    const response = await paystack.get(
+
+        `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
+
+    );
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get Banks
+|--------------------------------------------------------------------------
+*/
+
+async function getBanks() {
+
+    const response = await paystack.get("/bank");
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Create Transfer Recipient
+|--------------------------------------------------------------------------
+*/
+
+async function createTransferRecipient(data) {
+
+    const response = await paystack.post(
+
+        "/transferrecipient",
+
+        {
+
+            type: "nuban",
+
+            name: data.name,
+
+            account_number: data.account_number,
+
+            bank_code: data.bank_code,
+
+            currency: "NGN"
+
+        }
+
+    );
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Initiate Transfer
+|--------------------------------------------------------------------------
+*/
+
+async function initiateTransfer(data) {
+
+    const response = await paystack.post(
+
+        "/transfer",
+
+        {
+
+            source: "balance",
+
+            amount: data.amount,
+
+            recipient: data.recipient_code,
+
+            reason: data.reason
+
+        }
+
+    );
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Verify Transaction
+|--------------------------------------------------------------------------
+*/
+
+async function verifyTransaction(reference) {
+
+    const response = await paystack.get(
+
+        `/transaction/verify/${reference}`
+
+    );
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Exports
+|--------------------------------------------------------------------------
+*/
+
+module.exports = {
+
+    createCustomer,
+
+    identifyCustomer,
+
+    createDedicatedAccount,
+
+    verifyAccount,
+
+    getBanks,
+
+    createTransferRecipient,
+
+    initiateTransfer,
+
+    verifyTransaction
+
+};
