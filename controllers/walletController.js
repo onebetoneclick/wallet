@@ -507,25 +507,24 @@ exports.activateWallet = async (req, res) => {
 
         const {
 
-            data: profile,
-            error: profileError
+    data: profile,
+    error: profileError
 
-        } = await supabase
+} = await supabase
 
-            .from("profiles")
+    .from("profiles")
 
-            .select("*")
+    .select("*")
 
-            .eq("user_id", user_id)
+    .eq("user_id", user_id)
 
-            .single();
+    .maybeSingle();
 
-        if (profileError) {
+if (profileError) {
 
-            throw profileError;
+    throw profileError;
 
-        }
-
+}
         /*
         |--------------------------------------------------------------------------
         | Already Has Wallet
@@ -534,10 +533,11 @@ exports.activateWallet = async (req, res) => {
 
         if (
 
-            profile.account_number &&
-            profile.paystack_customer_code
+    profile &&
+    profile.account_number &&
+    profile.paystack_customer_code
 
-        ) {
+) {
 
             return res.status(200).json({
 
