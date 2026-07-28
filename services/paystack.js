@@ -176,3 +176,54 @@ module.exports = {
     initiateTransfer,
     verifyTransaction
 };
+/*
+|--------------------------------------------------------------------------
+| Get Dedicated Virtual Account
+|--------------------------------------------------------------------------
+*/
+
+exports.getDedicatedAccount = async (customer_code) => {
+
+    try {
+
+        const response = await axios.get(
+
+            "https://api.paystack.co/dedicated_account",
+
+            {
+
+                headers: {
+
+                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+
+                }
+
+            }
+
+        );
+
+        const accounts = response.data.data;
+
+        const account = accounts.find(
+
+            (item) => item.customer.customer_code === customer_code
+
+        );
+
+        if (!account) {
+
+            return null;
+
+        }
+
+        return account;
+
+    }
+
+    catch (err) {
+
+        throw err;
+
+    }
+
+};
