@@ -4,13 +4,13 @@ const router = express.Router();
 
 const {
     checkAccount,
+    verifyUser,
     sendActivationOTP,
     verifyActivationOTP,
     activateWallet,
-    verifyUser,
-    getWallet,
     getExistingWallet
 } = require("../controllers/walletController");
+
 /*
 |--------------------------------------------------------------------------
 | Verify Bank Account
@@ -21,7 +21,7 @@ router.post("/check-account", checkAccount);
 
 /*
 |--------------------------------------------------------------------------
-| Verify User Details
+| Verify User
 |--------------------------------------------------------------------------
 */
 
@@ -45,17 +45,17 @@ router.post("/verify-activation-otp", verifyActivationOTP);
 
 /*
 |--------------------------------------------------------------------------
-| Activate Wallet
-|--------------------------------------------------------------------------
-*/
-router.post("/existing-wallet", getWallet);
-/*
-|--------------------------------------------------------------------------
 | Get Existing Wallet
 |--------------------------------------------------------------------------
 */
 
-router.post("/get-wallet", getWallet);
+router.post("/existing-wallet", getExistingWallet);
+
+/*
+|--------------------------------------------------------------------------
+| Activate Wallet
+|--------------------------------------------------------------------------
+*/
 
 router.post("/activate", activateWallet);
 
