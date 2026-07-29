@@ -463,6 +463,11 @@ exports.verifyActivationOTP = async (req, res) => {
 |--------------------------------------------------------------------------
 | Activate Wallet
 |--------------------------------------------------------------------------
+| POST /api/wallet/activate
+|--------------------------------------------------------------------------
+| user_id is NOT required from Postman.
+| The backend finds the profile using the email.
+|--------------------------------------------------------------------------
 */
 
 exports.activateWallet = async (req, res) => {
@@ -470,8 +475,6 @@ exports.activateWallet = async (req, res) => {
     try {
 
         const {
-
-            user_id,
             email,
             first_name,
             last_name,
@@ -479,12 +482,15 @@ exports.activateWallet = async (req, res) => {
             bvn,
             account_number,
             bank_code
-
         } = req.body;
 
-        if (
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Request
+        |--------------------------------------------------------------------------
+        */
 
-            !user_id ||
+        if (
             !email ||
             !first_name ||
             !last_name ||
@@ -492,60 +498,101 @@ exports.activateWallet = async (req, res) => {
             !bvn ||
             !account_number ||
             !bank_code
-
         ) {
 
             return res.status(400).json({
 
                 success: false,
 
-                message: "All fields are required."
+                message:
+                    "email, first_name, last_name, phone, bvn, account_number and bank_code are required."
 
             });
 
         }
 
-        const {
-
-    data: profile,
-    error: profileError
-
-} = await supabase
-
-    .from("profiles")
-
-    .select("*")
-
-    .eq("user_id", user_id)
-
-    .maybeSingle();
-
-if (profileError) {
-
-    throw profileError;
-
-}
         /*
         |--------------------------------------------------------------------------
-        | Already Has Wallet
+        | Find Profile Using Email
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: profile,
+            error: profileError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select("*")
+
+            .eq("email", email)
+
+            .maybeSingle();
+
+        if (profileError) {
+
+            throw profileError;
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Profile Must Exist
+        |--------------------------------------------------------------------------
+        */
+
+        if (!profile) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message:
+                    "User profile not found. Please create the user first."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get Correct User ID
+        |--------------------------------------------------------------------------
+        */
+
+        const user_id = profile.user_id;
+
+        console.log(
+            "Wallet activation for user:",
+            user_id
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check Existing Virtual Account
         |--------------------------------------------------------------------------
         */
 
         if (
 
-    profile &&
-    profile.account_number &&
-    profile.paystack_customer_code
+            profile.account_number &&
+            profile.paystack_customer_code
 
-) {
+        ) {
 
             return res.status(200).json({
 
                 success: true,
 
-                message: "Wallet already activated.",
+                message:
+                    "Wallet already activated.",
 
                 data: {
+
+                    user_id,
 
                     customer_code:
                         profile.paystack_customer_code,
@@ -567,6 +614,39 @@ if (profileError) {
 
         /*
         |--------------------------------------------------------------------------
+        | Verify Bank Account
+        |--------------------------------------------------------------------------
+        */
+
+        const account = await verifyAccount(
+
+            account_number,
+
+            bank_code
+
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Verify Account Name
+        |--------------------------------------------------------------------------
+        */
+
+        if (!account || !account.account_name) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Unable to verify the bank account."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | Create Paystack Customer
         |--------------------------------------------------------------------------
         */
@@ -574,15 +654,18 @@ if (profileError) {
         const customer = await createCustomer({
 
             email,
+
             first_name,
+
             last_name,
+
             phone
 
         });
 
         /*
         |--------------------------------------------------------------------------
-        | Identify Customer
+        | Identify Customer Using BVN + Bank Account
         |--------------------------------------------------------------------------
         */
 
@@ -612,7 +695,7 @@ if (profileError) {
 
         /*
         |--------------------------------------------------------------------------
-        | Generate Dedicated Account
+        | Generate Dedicated Virtual Account
         |--------------------------------------------------------------------------
         */
 
@@ -624,12 +707,39 @@ if (profileError) {
 
         /*
         |--------------------------------------------------------------------------
-        | Save To Supabase
+        | Make Sure Paystack Returned Account
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+
+            !dedicated ||
+            !dedicated.account_number ||
+            !dedicated.account_name ||
+            !dedicated.bank
+
+        ) {
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Paystack did not return a valid virtual account."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Wallet To Existing Profile
         |--------------------------------------------------------------------------
         */
 
         const {
 
+            data: updatedProfile,
             error: updateError
 
         } = await supabase
@@ -637,6 +747,17 @@ if (profileError) {
             .from("profiles")
 
             .update({
+
+                first_name,
+
+                last_name,
+
+                full_name:
+                    `${first_name} ${last_name}`,
+
+                phone,
+
+                bvn,
 
                 paystack_customer_code:
                     customer.customer_code,
@@ -650,22 +771,55 @@ if (profileError) {
                 bank_name:
                     dedicated.bank.name,
 
-                bvn,
-
-                wallet_activated: true,
+                wallet_activated:
+                    true,
 
                 wallet_verified_at:
+                    new Date().toISOString(),
+
+                updated_at:
                     new Date().toISOString()
 
             })
 
-            .eq("user_id", user_id);
+            .eq("user_id", user_id)
+
+            .select()
+
+            .single();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check Supabase Update
+        |--------------------------------------------------------------------------
+        */
 
         if (updateError) {
 
-            throw updateError;
+            console.error(
+                "PROFILE UPDATE ERROR:",
+                updateError
+            );
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Virtual account was created, but the wallet could not be saved to the profile.",
+
+                error:
+                    updateError.message
+
+            });
 
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Success
+        |--------------------------------------------------------------------------
+        */
 
         return res.status(200).json({
 
@@ -675,6 +829,8 @@ if (profileError) {
                 "Wallet activated successfully.",
 
             data: {
+
+                user_id,
 
                 customer_code:
                     customer.customer_code,
@@ -686,7 +842,10 @@ if (profileError) {
                     dedicated.account_name,
 
                 bank_name:
-                    dedicated.bank.name
+                    dedicated.bank.name,
+
+                wallet_activated:
+                    true
 
             }
 
@@ -696,7 +855,10 @@ if (profileError) {
 
     catch (err) {
 
-        console.error(err);
+        console.error(
+            "ACTIVATE WALLET ERROR:",
+            err
+        );
 
         return res.status(500).json({
 
