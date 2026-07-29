@@ -1,20 +1,16 @@
 const supabase = require("../config/supabase");
 
 const {
-
     verifyAccount,
     createCustomer,
     identifyCustomer,
     createDedicatedAccount,
     getDedicatedAccount
-
 } = require("../services/paystack");
 
 /*
 |--------------------------------------------------------------------------
-| Verify Bank Account
-|--------------------------------------------------------------------------
-| POST /api/wallet/check-account
+| VERIFY BANK ACCOUNT
 |--------------------------------------------------------------------------
 */
 
@@ -22,56 +18,39 @@ exports.checkAccount = async (req, res) => {
 
     try {
 
-        const {
-
-            account_number,
-            bank_code
-
-        } = req.body;
+        const { account_number, bank_code } = req.body;
 
         if (!account_number || !bank_code) {
 
             return res.status(400).json({
-
                 success: false,
-
                 message: "Account number and bank code are required."
-
             });
 
         }
 
         const account = await verifyAccount(
-
             account_number,
             bank_code
-
         );
 
         return res.status(200).json({
 
             success: true,
-
             message: "Account verified successfully.",
-
             data: account
 
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         console.error(err);
 
         return res.status(500).json({
 
             success: false,
-
             message:
-
                 err.response?.data?.message ||
-
                 err.message
 
         });
@@ -80,11 +59,10 @@ exports.checkAccount = async (req, res) => {
 
 };
 
+
 /*
 |--------------------------------------------------------------------------
-| Verify User
-|--------------------------------------------------------------------------
-| POST /api/wallet/verify-user
+| VERIFY USER
 |--------------------------------------------------------------------------
 */
 
@@ -115,7 +93,6 @@ exports.verifyUser = async (req, res) => {
             return res.status(400).json({
 
                 success: false,
-
                 message: "All fields are required."
 
             });
@@ -129,22 +106,20 @@ exports.verifyUser = async (req, res) => {
         */
 
         const account = await verifyAccount(
-
             account_number,
             bank_code
-
         );
 
         /*
         |--------------------------------------------------------------------------
-        | Check User
+        | Find User Profile
         |--------------------------------------------------------------------------
         */
 
         const {
 
             data: profile,
-            error
+            error: profileError
 
         } = await supabase
 
@@ -156,15 +131,11 @@ exports.verifyUser = async (req, res) => {
 
             .maybeSingle();
 
-        if (error) {
-
-            throw error;
-
-        }
+        if (profileError) throw profileError;
 
         /*
         |--------------------------------------------------------------------------
-        | New User
+        | User does not exist
         |--------------------------------------------------------------------------
         */
 
@@ -191,16 +162,41 @@ exports.verifyUser = async (req, res) => {
             });
 
         }
-                /*
+
+        /*
         |--------------------------------------------------------------------------
-        | Existing Wallet
+        | Check Wallet Table
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: wallet,
+            error: walletError
+
+        } = await supabase
+
+            .from("wallets")
+
+            .select("*")
+
+            .eq("user_id", profile.user_id)
+
+            .maybeSingle();
+
+        if (walletError) throw walletError;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Wallet Already Exists
         |--------------------------------------------------------------------------
         */
 
         if (
 
-            profile.account_number &&
-            profile.paystack_customer_code
+            wallet &&
+            wallet.paystack_customer_code &&
+            wallet.account_number
 
         ) {
 
@@ -210,14 +206,14 @@ exports.verifyUser = async (req, res) => {
 
                 dedicated = await getDedicatedAccount(
 
-                    profile.paystack_customer_code
+                    wallet.paystack_customer_code
 
                 );
 
             } catch (err) {
 
                 console.log(
-                    "Could not fetch dedicated account from Paystack."
+                    "Could not fetch DVA from Paystack."
                 );
 
             }
@@ -226,7 +222,7 @@ exports.verifyUser = async (req, res) => {
 
                 success: true,
 
-                message: "Virtual account already exists.",
+                message: "Wallet already exists.",
 
                 data: {
 
@@ -234,17 +230,22 @@ exports.verifyUser = async (req, res) => {
 
                     needs_otp: false,
 
+                    user_id: profile.user_id,
+
                     customer_code:
-                        profile.paystack_customer_code,
+                        wallet.paystack_customer_code,
 
                     account_number:
-                        profile.account_number,
+                        wallet.account_number,
 
                     account_name:
-                        profile.account_name,
+                        wallet.account_name,
 
                     bank_name:
-                        profile.bank_name,
+                        wallet.bank_name,
+
+                    balance:
+                        wallet.balance,
 
                     paystack_data:
                         dedicated
@@ -265,19 +266,21 @@ exports.verifyUser = async (req, res) => {
 
             success: true,
 
-            message:
-                "User verified successfully.",
+            message: "User verified successfully.",
 
             data: {
 
-                user_id:
-                    profile.user_id,
+                user_id: profile.user_id,
 
-                email:
-                    profile.email,
+                email: profile.email,
 
-                account_name:
-                    account.account_name,
+                first_name: profile.first_name,
+
+                last_name: profile.last_name,
+
+                phone: profile.phone,
+
+                account_name: account.account_name,
 
                 has_virtual_account: false,
 
@@ -311,11 +314,10 @@ exports.verifyUser = async (req, res) => {
 
 };
 
+
 /*
 |--------------------------------------------------------------------------
-| Send Wallet Activation OTP
-|--------------------------------------------------------------------------
-| User email has already been verified during signup.
+| SEND ACTIVATION OTP
 |--------------------------------------------------------------------------
 */
 
@@ -323,11 +325,7 @@ exports.sendActivationOTP = async (req, res) => {
 
     try {
 
-        const {
-
-            email
-
-        } = req.body;
+        const { email } = req.body;
 
         if (!email) {
 
@@ -341,28 +339,19 @@ exports.sendActivationOTP = async (req, res) => {
 
         }
 
-        const {
-
-            error
-
-        } = await supabase.auth.signInWithOtp({
+        const { error } = await supabase.auth.signInWithOtp({
 
             email
 
         });
 
-        if (error) {
-
-            throw error;
-
-        }
+        if (error) throw error;
 
         return res.status(200).json({
 
             success: true,
 
-            message:
-                "Wallet activation OTP sent."
+            message: "Wallet activation OTP sent."
 
         });
 
@@ -384,9 +373,10 @@ exports.sendActivationOTP = async (req, res) => {
 
 };
 
+
 /*
 |--------------------------------------------------------------------------
-| Verify Wallet Activation OTP
+| VERIFY ACTIVATION OTP
 |--------------------------------------------------------------------------
 */
 
@@ -400,7 +390,8 @@ exports.verifyActivationOTP = async (req, res) => {
             token
 
         } = req.body;
-                if (!email || !token) {
+
+        if (!email || !token) {
 
             return res.status(400).json({
 
@@ -420,16 +411,14 @@ exports.verifyActivationOTP = async (req, res) => {
         } = await supabase.auth.verifyOtp({
 
             email,
+
             token,
+
             type: "email"
 
         });
 
-        if (error) {
-
-            throw error;
-
-        }
+        if (error) throw error;
 
         return res.status(200).json({
 
@@ -458,15 +447,9 @@ exports.verifyActivationOTP = async (req, res) => {
     }
 
 };
-
 /*
 |--------------------------------------------------------------------------
-| Activate Wallet
-|--------------------------------------------------------------------------
-| POST /api/wallet/activate
-|--------------------------------------------------------------------------
-| user_id is NOT required from Postman.
-| The backend finds the profile using the email.
+| ACTIVATE WALLET
 |--------------------------------------------------------------------------
 */
 
@@ -475,6 +458,7 @@ exports.activateWallet = async (req, res) => {
     try {
 
         const {
+
             email,
             first_name,
             last_name,
@@ -482,6 +466,7 @@ exports.activateWallet = async (req, res) => {
             bvn,
             account_number,
             bank_code
+
         } = req.body;
 
         /*
@@ -491,6 +476,7 @@ exports.activateWallet = async (req, res) => {
         */
 
         if (
+
             !email ||
             !first_name ||
             !last_name ||
@@ -498,6 +484,7 @@ exports.activateWallet = async (req, res) => {
             !bvn ||
             !account_number ||
             !bank_code
+
         ) {
 
             return res.status(400).json({
@@ -513,7 +500,7 @@ exports.activateWallet = async (req, res) => {
 
         /*
         |--------------------------------------------------------------------------
-        | Find Profile Using Email
+        | Find User Profile
         |--------------------------------------------------------------------------
         */
 
@@ -532,17 +519,7 @@ exports.activateWallet = async (req, res) => {
 
             .maybeSingle();
 
-        if (profileError) {
-
-            throw profileError;
-
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Profile Must Exist
-        |--------------------------------------------------------------------------
-        */
+        if (profileError) throw profileError;
 
         if (!profile) {
 
@@ -550,96 +527,139 @@ exports.activateWallet = async (req, res) => {
 
                 success: false,
 
-                message:
-                    "User profile not found. Please create the user first."
+                message: "Profile not found."
 
             });
 
         }
 
+        const user_id = profile.user_id;
+
         /*
         |--------------------------------------------------------------------------
-        | Get Correct User ID
+        | Check Wallet Table
         |--------------------------------------------------------------------------
         */
 
-        const user_id = profile.user_id;
+        const {
 
-        console.log(
-            "Wallet activation for user:",
-            user_id
-        );
+            data: wallet,
+            error: walletError
+
+        } = await supabase
+
+            .from("wallets")
+
+            .select("*")
+
+            .eq("user_id", user_id)
+
+            .maybeSingle();
+
+        if (walletError) throw walletError;
 
         /*
         |--------------------------------------------------------------------------
-        | Check Existing Virtual Account
+        | Wallet Already Exists
         |--------------------------------------------------------------------------
         */
 
         if (
 
-            profile.account_number &&
-            profile.paystack_customer_code
+            wallet &&
+            wallet.paystack_customer_code
 
         ) {
 
-            return res.status(200).json({
+            let dedicated = await getDedicatedAccount(
 
-                success: true,
+                wallet.paystack_customer_code
 
-                message:
-                    "Wallet already activated.",
+            );
 
-                data: {
+            if (dedicated) {
 
-                    user_id,
+                /*
+                |--------------------------------------------------------------------------
+                | Update Wallet If Account Changed
+                |--------------------------------------------------------------------------
+                */
 
-                    customer_code:
-                        profile.paystack_customer_code,
+                await supabase
 
-                    account_number:
-                        profile.account_number,
+                    .from("wallets")
 
-                    account_name:
-                        profile.account_name,
+                    .update({
 
-                    bank_name:
-                        profile.bank_name
+                        account_number:
+                            dedicated.account_number,
 
-                }
+                        account_name:
+                            dedicated.account_name,
 
-            });
+                        bank_name:
+                            dedicated.bank.name,
+
+                        dedicated_account_id:
+                            dedicated.id,
+
+                        updated_at:
+                            new Date().toISOString()
+
+                    })
+
+                    .eq("user_id", user_id);
+
+                return res.status(200).json({
+
+                    success: true,
+
+                    message:
+                        "Wallet already exists.",
+
+                    data: {
+
+                        customer_code:
+                            wallet.paystack_customer_code,
+
+                        account_number:
+                            dedicated.account_number,
+
+                        account_name:
+                            dedicated.account_name,
+
+                        bank_name:
+                            dedicated.bank.name
+
+                    }
+
+                });
+
+            }
 
         }
 
         /*
         |--------------------------------------------------------------------------
-        | Verify Bank Account
+        | Verify Account Number
         |--------------------------------------------------------------------------
         */
 
-        const account = await verifyAccount(
+        const verified = await verifyAccount(
 
             account_number,
-
             bank_code
 
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Verify Account Name
-        |--------------------------------------------------------------------------
-        */
-
-        if (!account || !account.account_name) {
+        if (!verified) {
 
             return res.status(400).json({
 
                 success: false,
 
                 message:
-                    "Unable to verify the bank account."
+                    "Unable to verify account."
 
             });
 
@@ -665,7 +685,7 @@ exports.activateWallet = async (req, res) => {
 
         /*
         |--------------------------------------------------------------------------
-        | Identify Customer Using BVN + Bank Account
+        | Identify Customer
         |--------------------------------------------------------------------------
         */
 
@@ -695,7 +715,7 @@ exports.activateWallet = async (req, res) => {
 
         /*
         |--------------------------------------------------------------------------
-        | Generate Dedicated Virtual Account
+        | Create Dedicated Virtual Account
         |--------------------------------------------------------------------------
         */
 
@@ -705,18 +725,11 @@ exports.activateWallet = async (req, res) => {
 
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Make Sure Paystack Returned Account
-        |--------------------------------------------------------------------------
-        */
-
         if (
 
             !dedicated ||
-            !dedicated.account_number ||
-            !dedicated.account_name ||
-            !dedicated.bank
+
+            !dedicated.account_number
 
         ) {
 
@@ -725,22 +738,105 @@ exports.activateWallet = async (req, res) => {
                 success: false,
 
                 message:
-                    "Paystack did not return a valid virtual account."
+                    "Unable to create dedicated account."
 
             });
+
+        }
+                /*
+        |--------------------------------------------------------------------------
+        | Save Wallet To wallets Table
+        |--------------------------------------------------------------------------
+        */
+
+        if (wallet) {
+
+            const { error: updateWalletError } = await supabase
+
+                .from("wallets")
+
+                .update({
+
+                    paystack_customer_code:
+                        customer.customer_code,
+
+                    account_number:
+                        dedicated.account_number,
+
+                    account_name:
+                        dedicated.account_name,
+
+                    bank_name:
+                        dedicated.bank.name,
+
+                    dedicated_account_id:
+                        dedicated.id,
+
+                    status: "active",
+
+                    updated_at:
+                        new Date().toISOString()
+
+                })
+
+                .eq("user_id", user_id);
+
+            if (updateWalletError) {
+
+                throw updateWalletError;
+
+            }
+
+        } else {
+
+            const { error: insertWalletError } = await supabase
+
+                .from("wallets")
+
+                .insert({
+
+                    user_id: user_id,
+
+                    paystack_customer_code:
+                        customer.customer_code,
+
+                    account_number:
+                        dedicated.account_number,
+
+                    account_name:
+                        dedicated.account_name,
+
+                    bank_name:
+                        dedicated.bank.name,
+
+                    dedicated_account_id:
+                        dedicated.id,
+
+                    balance: 0,
+
+                    currency: "NGN",
+
+                    status: "active"
+
+                });
+
+            if (insertWalletError) {
+
+                throw insertWalletError;
+
+            }
 
         }
 
         /*
         |--------------------------------------------------------------------------
-        | Save Wallet To Existing Profile
+        | Update Profile Information
         |--------------------------------------------------------------------------
         */
 
         const {
 
-            data: updatedProfile,
-            error: updateError
+            error: profileUpdateError
 
         } = await supabase
 
@@ -752,27 +848,13 @@ exports.activateWallet = async (req, res) => {
 
                 last_name,
 
-                full_name:
-                    `${first_name} ${last_name}`,
+                full_name: `${first_name} ${last_name}`,
 
                 phone,
 
                 bvn,
 
-                paystack_customer_code:
-                    customer.customer_code,
-
-                account_number:
-                    dedicated.account_number,
-
-                account_name:
-                    dedicated.account_name,
-
-                bank_name:
-                    dedicated.bank.name,
-
-                wallet_activated:
-                    true,
+                wallet_activated: true,
 
                 wallet_verified_at:
                     new Date().toISOString(),
@@ -782,42 +864,17 @@ exports.activateWallet = async (req, res) => {
 
             })
 
-            .eq("user_id", user_id)
+            .eq("user_id", user_id);
 
-            .select()
+        if (profileUpdateError) {
 
-            .single();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Check Supabase Update
-        |--------------------------------------------------------------------------
-        */
-
-        if (updateError) {
-
-            console.error(
-                "PROFILE UPDATE ERROR:",
-                updateError
-            );
-
-            return res.status(500).json({
-
-                success: false,
-
-                message:
-                    "Virtual account was created, but the wallet could not be saved to the profile.",
-
-                error:
-                    updateError.message
-
-            });
+            throw profileUpdateError;
 
         }
 
         /*
         |--------------------------------------------------------------------------
-        | Success
+        | Success Response
         |--------------------------------------------------------------------------
         */
 
@@ -825,8 +882,7 @@ exports.activateWallet = async (req, res) => {
 
             success: true,
 
-            message:
-                "Wallet activated successfully.",
+            message: "Wallet activated successfully.",
 
             data: {
 
@@ -844,8 +900,7 @@ exports.activateWallet = async (req, res) => {
                 bank_name:
                     dedicated.bank.name,
 
-                wallet_activated:
-                    true
+                wallet_activated: true
 
             }
 
@@ -856,8 +911,11 @@ exports.activateWallet = async (req, res) => {
     catch (err) {
 
         console.error(
+
             "ACTIVATE WALLET ERROR:",
-            err
+
+            err.response?.data || err
+
         );
 
         return res.status(500).json({
