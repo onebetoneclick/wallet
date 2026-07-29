@@ -55,7 +55,7 @@ router.post("/verify-activation-otp", verifyActivationOTP);
 | Activate Wallet
 |--------------------------------------------------------------------------
 */
-
+router.post("/existing-wallet", walletController.getExistingWallet);
 /*
 |--------------------------------------------------------------------------
 | Get Existing Wallet
