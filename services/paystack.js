@@ -29,14 +29,21 @@ const paystack = axios.create({
 */
 
 async function createCustomer(data) {
+
     const response = await paystack.post("/customer", {
+
         email: data.email,
+
         first_name: data.first_name,
+
         last_name: data.last_name,
+
         phone: data.phone
+
     });
 
     return response.data.data;
+
 }
 
 /*
@@ -46,43 +53,129 @@ async function createCustomer(data) {
 */
 
 async function identifyCustomer(customerCode, data) {
+
     const response = await paystack.post(
+
         `/customer/${customerCode}/identification`,
+
         {
+
             country: "NG",
+
             type: "bank_account",
+
             value: data.bvn,
+
             account_number: data.account_number,
+
             bvn: data.bvn,
+
             bank_code: data.bank_code,
+
             first_name: data.first_name,
+
             last_name: data.last_name,
+
             middle_name: data.middle_name || ""
+
         }
+
     );
 
     return response.data.data;
+
 }
 
 /*
 |--------------------------------------------------------------------------
-| Create Dedicated Account (NUBAN)
+| Create Dedicated Virtual Account
 |--------------------------------------------------------------------------
 */
 
 async function createDedicatedAccount(customerCode) {
+
     try {
-        const response = await paystack.post("/dedicated_account", {
-            customer: customerCode,
-            preferred_bank: "wema-bank"
-        });
+
+        const response = await paystack.post(
+
+            "/dedicated_account",
+
+            {
+
+                customer: customerCode,
+
+                preferred_bank: "wema-bank"
+
+            }
+
+        );
 
         return response.data.data;
-    } catch (error) {
-        console.error("PAYSTACK DEDICATED ACCOUNT ERROR:");
-        console.error(error.response?.data);
-        throw error;
+
     }
+
+    catch (error) {
+
+        console.error(
+
+            "PAYSTACK CREATE DEDICATED ACCOUNT ERROR:",
+
+            error.response?.data || error.message
+
+        );
+
+        throw error;
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get Existing Dedicated Virtual Account
+|--------------------------------------------------------------------------
+*/
+
+async function getDedicatedAccount(customerCode) {
+
+    try {
+
+        const response = await paystack.get(
+
+            "/dedicated_account"
+
+        );
+
+        const accounts = response.data.data;
+
+        const account = accounts.find(
+
+            item =>
+
+                item.customer &&
+
+                item.customer.customer_code === customerCode
+
+        );
+
+        return account || null;
+
+    }
+
+    catch (error) {
+
+        console.error(
+
+            "PAYSTACK GET DEDICATED ACCOUNT ERROR:",
+
+            error.response?.data || error.message
+
+        );
+
+        throw error;
+
+    }
+
 }
 
 /*
@@ -92,23 +185,33 @@ async function createDedicatedAccount(customerCode) {
 */
 
 async function verifyAccount(accountNumber, bankCode) {
+
     const response = await paystack.get(
+
         `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
+
     );
 
     return response.data.data;
+
 }
 
 /*
 |--------------------------------------------------------------------------
-| List Banks
+| Get Banks
 |--------------------------------------------------------------------------
 */
 
 async function getBanks() {
-    const response = await paystack.get("/bank");
+
+    const response = await paystack.get(
+
+        "/bank"
+
+    );
 
     return response.data.data;
+
 }
 
 /*
@@ -118,15 +221,29 @@ async function getBanks() {
 */
 
 async function createTransferRecipient(data) {
-    const response = await paystack.post("/transferrecipient", {
-        type: "nuban",
-        name: data.name,
-        account_number: data.account_number,
-        bank_code: data.bank_code,
-        currency: "NGN"
-    });
+
+    const response = await paystack.post(
+
+        "/transferrecipient",
+
+        {
+
+            type: "nuban",
+
+            name: data.name,
+
+            account_number: data.account_number,
+
+            bank_code: data.bank_code,
+
+            currency: "NGN"
+
+        }
+
+    );
 
     return response.data.data;
+
 }
 
 /*
@@ -136,14 +253,27 @@ async function createTransferRecipient(data) {
 */
 
 async function initiateTransfer(data) {
-    const response = await paystack.post("/transfer", {
-        source: "balance",
-        amount: data.amount, // Kobo
-        recipient: data.recipient_code,
-        reason: data.reason
-    });
+
+    const response = await paystack.post(
+
+        "/transfer",
+
+        {
+
+            source: "balance",
+
+            amount: data.amount,
+
+            recipient: data.recipient_code,
+
+            reason: data.reason
+
+        }
+
+    );
 
     return response.data.data;
+
 }
 
 /*
@@ -153,11 +283,15 @@ async function initiateTransfer(data) {
 */
 
 async function verifyTransaction(reference) {
+
     const response = await paystack.get(
+
         `/transaction/verify/${reference}`
+
     );
 
     return response.data.data;
+
 }
 
 /*
@@ -167,63 +301,23 @@ async function verifyTransaction(reference) {
 */
 
 module.exports = {
+
     createCustomer,
+
     identifyCustomer,
+
     createDedicatedAccount,
+
+    getDedicatedAccount,
+
     verifyAccount,
+
     getBanks,
+
     createTransferRecipient,
+
     initiateTransfer,
+
     verifyTransaction
-};
-/*
-|--------------------------------------------------------------------------
-| Get Dedicated Virtual Account
-|--------------------------------------------------------------------------
-*/
-
-exports.getDedicatedAccount = async (customer_code) => {
-
-    try {
-
-        const response = await axios.get(
-
-            "https://api.paystack.co/dedicated_account",
-
-            {
-
-                headers: {
-
-                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
-
-                }
-
-            }
-
-        );
-
-        const accounts = response.data.data;
-
-        const account = accounts.find(
-
-            (item) => item.customer.customer_code === customer_code
-
-        );
-
-        if (!account) {
-
-            return null;
-
-        }
-
-        return account;
-
-    }
-
-    catch (err) {
-
-        throw err;
-
-    }
 
 };
