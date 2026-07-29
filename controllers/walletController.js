@@ -557,6 +557,8 @@ exports.activateWallet = async (req, res) => {
             .maybeSingle();
 
         if (walletError) throw walletError;
+        console.log("PROFILE USER ID:", user_id);
+        console.log("WALLET RECORD:", wallet);
 
         /*
         |--------------------------------------------------------------------------
