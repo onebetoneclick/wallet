@@ -671,6 +671,44 @@ exports.activateWallet = async (req, res) => {
         |--------------------------------------------------------------------------
         */
 
+            /*
+|--------------------------------------------------------------------------
+| Existing Wallet In Paystack
+|--------------------------------------------------------------------------
+*/
+
+if (wallet && wallet.paystack_customer_code) {
+
+    const existingAccount = await getDedicatedAccount(
+        wallet.paystack_customer_code
+    );
+
+    if (existingAccount) {
+
+        await supabase
+            .from("wallets")
+            .update({
+                account_number: existingAccount.account_number,
+                account_name: existingAccount.account_name,
+                bank_name: existingAccount.bank.name,
+                dedicated_account_id: existingAccount.id,
+                status: "active",
+                updated_at: new Date().toISOString()
+            })
+            .eq("user_id", user_id);
+
+        return res.status(200).json({
+            success: true,
+            message: "Existing virtual account retrieved successfully.",
+            data: {
+                customer_code: wallet.paystack_customer_code,
+                account_number: existingAccount.account_number,
+                account_name: existingAccount.account_name,
+                bank_name: existingAccount.bank.name
+            }
+        });
+    }
+}
         const customer = await createCustomer({
 
             email,
