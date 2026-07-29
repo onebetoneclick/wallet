@@ -12,7 +12,9 @@ const {
 
     activateWallet,
 
-    verifyUser
+    verifyUser,
+
+    getWallet
 
 } = require("../controllers/walletController");
 
@@ -53,6 +55,14 @@ router.post("/verify-activation-otp", verifyActivationOTP);
 | Activate Wallet
 |--------------------------------------------------------------------------
 */
+
+/*
+|--------------------------------------------------------------------------
+| Get Existing Wallet
+|--------------------------------------------------------------------------
+*/
+
+router.post("/get-wallet", getWallet);
 
 router.post("/activate", activateWallet);
 
