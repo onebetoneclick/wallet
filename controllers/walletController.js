@@ -863,3 +863,208 @@ exports.activateWallet = async (req, res) => {
     }
 
 };
+/*
+|--------------------------------------------------------------------------
+| GET EXISTING WALLET
+|--------------------------------------------------------------------------
+| POST /api/wallet/existing-wallet
+|--------------------------------------------------------------------------
+*/
+
+exports.getExistingWallet = async (req, res) => {
+
+    try {
+
+        const { email } = req.body;
+
+        if (!email) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message: "Email is required."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find User Profile
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: profile,
+            error: profileError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select("*")
+
+            .eq("email", email)
+
+            .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (!profile) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "User profile not found."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find Wallet
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: wallet,
+            error: walletError
+
+        } = await supabase
+
+            .from("wallets")
+
+            .select("*")
+
+            .eq("user_id", profile.user_id)
+
+            .maybeSingle();
+
+        if (walletError) throw walletError;
+
+        if (!wallet || !wallet.paystack_customer_code) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "No wallet found for this user."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get Dedicated Account From Paystack
+        |--------------------------------------------------------------------------
+        */
+
+        const dedicated = await getDedicatedAccount(
+            wallet.paystack_customer_code
+        );
+
+        if (!dedicated) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "Dedicated account not found on Paystack."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Wallet Record
+        |--------------------------------------------------------------------------
+        */
+
+        await supabase
+
+            .from("wallets")
+
+            .update({
+
+                account_number: dedicated.account_number,
+
+                account_name: dedicated.account_name,
+
+                bank_name: dedicated.bank.name,
+
+                dedicated_account_id: dedicated.id,
+
+                status: "active",
+
+                updated_at: new Date().toISOString()
+
+            })
+
+            .eq("user_id", profile.user_id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Return Wallet
+        |--------------------------------------------------------------------------
+        */
+
+        return res.status(200).json({
+
+            success: true,
+
+            message: "Existing wallet retrieved successfully.",
+
+            data: {
+
+                customer_code: wallet.paystack_customer_code,
+
+                account_number: dedicated.account_number,
+
+                account_name: dedicated.account_name,
+
+                bank_name: dedicated.bank.name,
+
+                balance: wallet.balance,
+
+                currency: wallet.currency
+
+            }
+
+        });
+
+    }
+
+    catch (err) {
+
+        console.error(
+
+            "GET EXISTING WALLET ERROR:",
+
+            err.response?.data || err
+
+        );
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+
+                err.response?.data?.message ||
+
+                err.message ||
+
+                "Unable to retrieve wallet."
+
+        });
+
+    }
+
+};
