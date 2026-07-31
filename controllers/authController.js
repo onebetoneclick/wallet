@@ -2,114 +2,497 @@ const supabase = require("../config/supabase");
 
 /*
 |--------------------------------------------------------------------------
-| Send OTP
+| Helpers
 |--------------------------------------------------------------------------
 */
 
-exports.sendOTP = async (req, res) => {
+function splitFullName(fullName = "") {
+
+    const names = fullName
+        .trim()
+        .replace(/\s+/g, " ")
+        .split(" ");
+
+    return {
+
+        first_name: names[0] || "",
+
+        last_name: names.slice(1).join(" ")
+
+    };
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| REGISTER USER
+|--------------------------------------------------------------------------
+*/
+
+exports.registerUser = async (req, res) => {
+
     try {
-        const { type, email, phone } = req.body;
 
-        if (!type || !["email", "phone"].includes(type)) {
+        const {
+
+            email,
+            phone,
+            full_name,
+            account_number,
+            bank_code
+
+        } = req.body;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+
+            !email ||
+
+            !phone ||
+
+            !full_name ||
+
+            !account_number ||
+
+            !bank_code
+
+        ) {
+
             return res.status(400).json({
+
                 success: false,
-                message: "type must be either 'email' or 'phone'."
+
+                message:
+                "Email, phone, full name, bank code and account number are required."
+
             });
+
         }
 
-        if (type === "email" && !email) {
-            return res.status(400).json({
+        /*
+        |--------------------------------------------------------------------------
+        | Split Name
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            first_name,
+
+            last_name
+
+        } = splitFullName(full_name);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check Existing Email
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: existingEmail,
+
+            error: emailError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select("id,email")
+
+            .eq("email", email)
+
+            .maybeSingle();
+
+        if (emailError) throw emailError;
+
+        if (existingEmail) {
+
+            return res.status(409).json({
+
                 success: false,
-                message: "Email is required for email OTP."
+
+                message:
+                "Email already exists."
+
             });
+
         }
 
-        if (type === "phone" && !phone) {
-            return res.status(400).json({
+        /*
+        |--------------------------------------------------------------------------
+        | Check Existing Phone
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: existingPhone,
+
+            error: phoneError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select("id,phone")
+
+            .eq("phone", phone)
+
+            .maybeSingle();
+
+        if (phoneError) throw phoneError;
+
+        if (existingPhone) {
+
+            return res.status(409).json({
+
                 success: false,
-                message: "Phone is required for phone OTP."
+
+                message:
+                "Phone number already exists."
+
             });
+
         }
+              /*
+        |--------------------------------------------------------------------------
+        | Create Supabase Auth User
+        |--------------------------------------------------------------------------
+        */
 
-        const payload = type === "email" ? { email } : { phone };
+        const {
 
-        const { error } = await supabase.auth.signInWithOtp(payload);
+            data: authUser,
 
-        if (error) {
-            throw error;
-        }
+            error: authError
+
+        } = await supabase.auth.admin.createUser({
+
+            email,
+
+            email_confirm: false,
+
+            user_metadata: {
+
+                full_name,
+
+                first_name,
+
+                last_name,
+
+                phone
+
+            }
+
+        });
+
+        if (authError) throw authError;
+
+        /*
+        |--------------------------------------------------------------------------
+        | User ID
+        |--------------------------------------------------------------------------
+        */
+
+        const user_id = authUser.user.id;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Profile
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            error: profileError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .insert({
+
+                user_id,
+
+                email,
+
+                phone,
+
+                first_name,
+
+                last_name,
+
+                full_name,
+
+                account_number,
+
+                bank_code,
+
+                wallet_activated: false,
+
+                created_at:
+                    new Date().toISOString(),
+
+                updated_at:
+                    new Date().toISOString()
+
+            });
+
+        if (profileError) throw profileError;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send Email OTP
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            error: otpError
+
+        } = await supabase.auth.signInWithOtp({
+
+            email
+
+        });
+
+        if (otpError) throw otpError;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Success
+        |--------------------------------------------------------------------------
+        */
 
         return res.status(200).json({
+
             success: true,
-            message: "OTP sent successfully."
+
+            message:
+                "Registration successful. OTP has been sent to your email.",
+
+            data: {
+
+                user_id,
+
+                email,
+
+                phone,
+
+                full_name,
+
+                first_name,
+
+                last_name,
+
+                account_number,
+
+                bank_code,
+
+                wallet_activated: false
+
+            }
+
         });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({
-            success: false,
-            message: err.message || "Failed to send OTP."
-        });
+
     }
+
+    catch (err) {
+
+        console.error(
+
+            "REGISTER USER ERROR:",
+
+            err
+
+        );
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+
+                err.message ||
+
+                "Registration failed."
+
+        });
+
+    }
+
+};
+/*
+|--------------------------------------------------------------------------
+| VERIFY EMAIL OTP
+|--------------------------------------------------------------------------
+*/
+
+exports.verifyEmail = async (req, res) => {
+
+    try {
+
+        const {
+
+            email,
+
+            token
+
+        } = req.body;
+
+        if (!email || !token) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message: "Email and OTP are required."
+
+            });
+
+        }
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase.auth.verifyOtp({
+
+            email,
+
+            token,
+
+            type: "email"
+
+        });
+
+        if (error) throw error;
+
+        return res.status(200).json({
+
+            success: true,
+
+            message: "Email verified successfully.",
+
+            data
+
+        });
+
+    }
+
+    catch (err) {
+
+        console.error(
+
+            "VERIFY EMAIL ERROR:",
+
+            err
+
+        );
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+
+                err.message ||
+
+                "Unable to verify email."
+
+        });
+
+    }
+
 };
 
 /*
 |--------------------------------------------------------------------------
-| Verify OTP
+| RESEND EMAIL OTP
 |--------------------------------------------------------------------------
 */
 
-exports.verifyOTP = async (req, res) => {
+exports.resendOTP = async (req, res) => {
+
     try {
-        const { type, email, phone, token } = req.body;
 
-        if (!type || !["email", "phone"].includes(type)) {
+        const {
+
+            email
+
+        } = req.body;
+
+        if (!email) {
+
             return res.status(400).json({
+
                 success: false,
-                message: "type must be either 'email' or 'phone'."
+
+                message: "Email is required."
+
             });
+
         }
 
-        if (!token) {
-            return res.status(400).json({
-                success: false,
-                message: "token is required."
-            });
-        }
+        const {
 
-        if (type === "email" && !email) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is required for email OTP verification."
-            });
-        }
+            error
 
-        if (type === "phone" && !phone) {
-            return res.status(400).json({
-                success: false,
-                message: "Phone is required for phone OTP verification."
-            });
-        }
+        } = await supabase.auth.signInWithOtp({
 
-        const payload = type === "email"
-            ? { email, token, type: "email" }
-            : { phone, token, type: "sms" };
+            email
 
-        const { data, error } = await supabase.auth.verifyOtp(payload);
+        });
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         return res.status(200).json({
+
             success: true,
-            message: "OTP verified successfully.",
-            data
+
+            message: "OTP has been sent successfully."
+
         });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({
-            success: false,
-            message: err.message || "OTP verification failed."
-        });
+
     }
+
+    catch (err) {
+
+        console.error(
+
+            "RESEND OTP ERROR:",
+
+            err
+
+        );
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+
+                err.message ||
+
+                "Unable to resend OTP."
+
+        });
+
+    }
+
 };
+
+/*
+|--------------------------------------------------------------------------
+| END OF AUTH CONTROLLER
+|--------------------------------------------------------------------------
+*/
