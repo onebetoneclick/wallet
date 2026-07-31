@@ -203,49 +203,45 @@ exports.registerUser = async (req, res) => {
 
         const user_id = authUser.user.id;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Create Profile
-        |--------------------------------------------------------------------------
-        */
+       /*
+|--------------------------------------------------------------------------
+| Update Existing Profile Created By Trigger
+|--------------------------------------------------------------------------
+*/
 
-        const {
+const {
 
-            error: profileError
+    error: profileError
 
-        } = await supabase
+} = await supabase
 
-            .from("profiles")
+    .from("profiles")
 
-            .insert({
+    .update({
 
-                user_id,
+        email,
 
-                email,
+        phone,
 
-                phone,
+        first_name,
 
-                first_name,
+        last_name,
 
-                last_name,
+        full_name,
 
-                full_name,
+        account_number,
 
-                account_number,
+        bank_code,
 
-                bank_code,
+        wallet_activated: false,
 
-                wallet_activated: false,
+        updated_at: new Date().toISOString()
 
-                created_at:
-                    new Date().toISOString(),
+    })
 
-                updated_at:
-                    new Date().toISOString()
+    .eq("user_id", user_id);
 
-            });
-
-        if (profileError) throw profileError;
+if (profileError) throw profileError;
 
         /*
         |--------------------------------------------------------------------------
