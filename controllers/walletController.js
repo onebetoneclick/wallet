@@ -433,6 +433,7 @@ exports.activateWallet = async (req, res) => {
             bank_code
 
         } = req.body;
+        
 
         /*
         |--------------------------------------------------------------------------
@@ -1021,22 +1022,35 @@ exports.getExistingWallet = async (req, res) => {
 
             message: "Existing wallet retrieved successfully.",
 
-            data: {
+           data: {
 
-                customer_code: wallet.paystack_customer_code,
+    user_id: profile.user_id,
 
-                account_number: dedicated.account_number,
+    email: profile.email,
 
-                account_name: dedicated.account_name,
+    phone: profile.phone,
 
-                bank_name: dedicated.bank.name,
+    full_name: profile.full_name,
 
-                balance: wallet.balance,
+    first_name: profile.first_name,
 
-                currency: wallet.currency
+    last_name: profile.last_name,
 
-            }
+    customer_code: wallet.paystack_customer_code,
 
+    account_number: dedicated.account_number,
+
+    account_name: dedicated.account_name,
+
+    bank_name: dedicated.bank.name,
+
+    balance: wallet.balance,
+
+    currency: wallet.currency,
+
+    wallet_activated: profile.wallet_activated
+
+}
         });
 
     }
