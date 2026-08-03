@@ -772,10 +772,10 @@ exports.verifyLoginOTP = async (req, res) => {
 
     .select("*")
 
-    .eq(
-        "email",
-        cleanEmail
-    )
+    .ilike(
+    "email",
+    cleanEmail
+)
 
     .maybeSingle();
 
