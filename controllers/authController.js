@@ -762,33 +762,29 @@ exports.verifyLoginOTP = async (req, res) => {
 
         const {
 
-            data: profile,
+    data: profile,
 
-            error: profileError
+    error: profileError
 
-        } = await supabase
+} = await supabase
 
-            .from("profiles")
+    .from("profiles")
 
-            .select(`
+    .select("*")
 
-                user_id,
-                email,
-                phone,
-                full_name,
-                first_name,
-                last_name,
-                account_number,
-                account_name,
-                bank_name,
-                bank_code,
-                wallet_activated
+    .eq(
+        "user_id",
+        data.user.id
+    )
 
-            `)
+    .maybeSingle();
 
-            .ilike("email", cleanEmail)
 
-            .maybeSingle();
+console.log("PROFILE FOUND:");
+console.log(profile);
+
+console.log("PROFILE ERROR:");
+console.log(profileError);
 
 
 
