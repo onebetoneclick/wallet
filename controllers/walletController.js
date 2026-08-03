@@ -657,29 +657,43 @@ const {
         |--------------------------------------------------------------------------
         */
 
-        await identifyCustomer(
+      try {
 
-            customer.customer_code,
+    const identify = await identifyCustomer(
 
-            {
+        customer.customer_code,
 
-                country: "NG",
+        {
 
-                type: "bank_account",
+            country: "NG",
 
-                account_number,
+            type: "bank_account",
 
-                bank_code,
+            account_number,
 
-                bvn,
+            bank_code,
 
-                first_name,
+            bvn,
 
-                last_name
+            first_name,
 
-            }
+            last_name
 
-        );
+        }
+
+    );
+
+    console.log("IDENTIFY SUCCESS:");
+    console.log(identify);
+
+} catch (err) {
+
+    console.log("IDENTIFY ERROR:");
+    console.log(err.response?.data || err);
+
+    throw err;
+
+}
 
         /*
         |--------------------------------------------------------------------------
