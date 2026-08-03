@@ -750,6 +750,8 @@ exports.verifyLoginOTP = async (req, res) => {
             throw error;
 
         }
+        console.log("OTP VERIFIED USER:");
+        console.log(data.user);
 
 
         /*
