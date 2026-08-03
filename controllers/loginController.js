@@ -12,6 +12,11 @@ exports.login = async (req, res) => {
 
         const { email } = req.body;
 
+console.log("================================");
+console.log("EMAIL RECEIVED:", email);
+console.log("TYPE:", typeof email);
+console.log("================================");
+
         /*
         |--------------------------------------------------------------------------
         | Validate
@@ -36,36 +41,28 @@ exports.login = async (req, res) => {
         |--------------------------------------------------------------------------
         */
 
-        const {
+       const cleanEmail = email.trim().toLowerCase();
 
-            data: profile,
+console.log("SEARCHING:", cleanEmail);
 
-            error: profileError
+const {
 
-        } = await supabase
+    data: profile,
 
-            .from("profiles")
+    error: profileError
 
-            .select("*")
+} = await supabase
 
-            .eq("email", email)
+    .from("profiles")
 
-            .maybeSingle();
+    .select("*")
 
-        if (profileError) throw profileError;
+    .ilike("email", cleanEmail)
 
-        if (!profile) {
+    .maybeSingle();
 
-            return res.status(404).json({
-
-                success: false,
-
-                message: "No account found with this email."
-
-            });
-
-        }
-
+console.log("PROFILE:", profile);
+console.log("PROFILE ERROR:", profileError);
         /*
         |--------------------------------------------------------------------------
         | Wallet Activated?
