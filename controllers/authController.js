@@ -489,6 +489,409 @@ exports.resendOTP = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
+| LOGIN USER
+|--------------------------------------------------------------------------
+*/
+
+exports.loginUser = async (req, res) => {
+
+    try {
+
+        const { email } = req.body;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate
+        |--------------------------------------------------------------------------
+        */
+
+        if (!email) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message: "Email is required."
+
+            });
+
+        }
+
+
+        const cleanEmail = email.trim().toLowerCase();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find User Profile
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: profile,
+
+            error: profileError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select(`
+
+                user_id,
+                email,
+                phone,
+                full_name,
+                first_name,
+                last_name,
+                wallet_activated,
+                account_number,
+                account_name,
+                bank_name,
+                bank_code
+
+            `)
+
+            .ilike("email", cleanEmail)
+
+            .maybeSingle();
+
+
+        if (profileError) {
+
+            throw profileError;
+
+        }
+
+
+        if (!profile) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "No account found with this email."
+
+            });
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check Wallet Status
+        |--------------------------------------------------------------------------
+        */
+
+        if (!profile.wallet_activated) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                "Your wallet is not activated yet."
+
+            });
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send Login OTP
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            error: otpError
+
+        } = await supabase.auth.signInWithOtp({
+
+            email: cleanEmail
+
+        });
+
+
+        if (otpError) {
+
+            throw otpError;
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Temporary Login Data
+        |--------------------------------------------------------------------------
+        */
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+            "Login OTP sent successfully.",
+
+            data: {
+
+                email: profile.email,
+
+                user_id: profile.user_id,
+
+                full_name: profile.full_name
+
+            }
+
+        });
+
+
+    }
+
+
+    catch (err) {
+
+
+        console.error(
+
+            "LOGIN USER ERROR:",
+
+            err
+
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+
+            err.message ||
+
+            "Unable to login."
+
+        });
+
+
+    }
+
+};
+
+/*
+|--------------------------------------------------------------------------
+| VERIFY LOGIN OTP
+|--------------------------------------------------------------------------
+*/
+
+exports.verifyLoginOTP = async (req, res) => {
+
+    try {
+
+        const {
+
+            email,
+
+            token
+
+        } = req.body;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate
+        |--------------------------------------------------------------------------
+        */
+
+        if (!email || !token) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                "Email and OTP are required."
+
+            });
+
+        }
+
+
+        const cleanEmail = email.trim().toLowerCase();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Verify OTP
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase.auth.verifyOtp({
+
+            email: cleanEmail,
+
+            token,
+
+            type: "email"
+
+        });
+
+
+        if (error) {
+
+            throw error;
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get User Profile After Login
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: profile,
+
+            error: profileError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select(`
+
+                user_id,
+                email,
+                phone,
+                full_name,
+                first_name,
+                last_name,
+                account_number,
+                account_name,
+                bank_name,
+                bank_code,
+                wallet_activated
+
+            `)
+
+            .ilike("email", cleanEmail)
+
+            .maybeSingle();
+
+
+
+        if (profileError) {
+
+            throw profileError;
+
+        }
+
+
+
+        if (!profile) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message:
+                "User profile not found after verification."
+
+            });
+
+        }
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Success
+        |--------------------------------------------------------------------------
+        */
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+            "Login successful.",
+
+            session: data.session,
+
+            user: {
+
+                user_id: profile.user_id,
+
+                email: profile.email,
+
+                phone: profile.phone,
+
+                full_name: profile.full_name,
+
+                first_name: profile.first_name,
+
+                last_name: profile.last_name,
+
+                account_number: profile.account_number,
+
+                account_name: profile.account_name,
+
+                bank_name: profile.bank_name,
+
+                bank_code: profile.bank_code,
+
+                wallet_activated:
+                profile.wallet_activated
+
+            }
+
+        });
+
+
+    }
+
+
+    catch (err) {
+
+
+        console.error(
+
+            "VERIFY LOGIN OTP ERROR:",
+
+            err
+
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+
+            err.message ||
+
+            "Unable to verify login OTP."
+
+        });
+
+
+    }
+
+};
+
+/*
+|--------------------------------------------------------------------------
 | END OF AUTH CONTROLLER
 |--------------------------------------------------------------------------
 */
