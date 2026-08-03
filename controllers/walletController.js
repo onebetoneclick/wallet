@@ -423,16 +423,15 @@ exports.activateWallet = async (req, res) => {
     try {
 
         const {
-
-            email,
-            first_name,
-            last_name,
-            phone,
-            bvn,
-            account_number,
-            bank_code
-
-        } = req.body;
+    user_id,
+    email,
+    first_name,
+    last_name,
+    phone,
+    bvn,
+    account_number,
+    bank_code
+} = req.body;
         
 
         /*
@@ -464,26 +463,26 @@ exports.activateWallet = async (req, res) => {
 
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Find User Profile
-        |--------------------------------------------------------------------------
-        */
+       /*
+|--------------------------------------------------------------------------
+| Find User Profile
+|--------------------------------------------------------------------------
+*/
 
-        const {
+const {
 
-            data: profile,
-            error: profileError
+    data: profile,
+    error: profileError
 
-        } = await supabase
+} = await supabase
 
-            .from("profiles")
+    .from("profiles")
 
-            .select("*")
+    .select("*")
 
-            .eq("email", email)
+    .eq("user_id", user_id)
 
-            .maybeSingle();
+    .single();
 
         if (profileError) throw profileError;
 
@@ -498,9 +497,6 @@ exports.activateWallet = async (req, res) => {
             });
 
         }
-
-        const user_id = profile.user_id;
-
         /*
         |--------------------------------------------------------------------------
         | Check Wallet Table
