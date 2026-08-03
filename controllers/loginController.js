@@ -35,15 +35,15 @@ console.log("================================");
 
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Find Profile
-        |--------------------------------------------------------------------------
-        */
+       /*
+|--------------------------------------------------------------------------
+| Find Profile
+|--------------------------------------------------------------------------
+*/
 
-       const cleanEmail = email.trim().toLowerCase();
+const cleanEmail = email.trim().toLowerCase();
 
-console.log("SEARCHING:", cleanEmail);
+console.log("EMAIL RECEIVED:", cleanEmail);
 
 const {
 
@@ -62,25 +62,26 @@ const {
     .maybeSingle();
 
 console.log("PROFILE:", profile);
+
 console.log("PROFILE ERROR:", profileError);
-        /*
-        |--------------------------------------------------------------------------
-        | Wallet Activated?
-        |--------------------------------------------------------------------------
-        */
 
-        if (!profile.wallet_activated) {
+if (profileError) {
 
-            return res.status(400).json({
+    throw profileError;
 
-                success: false,
+}
 
-                message:
-                "Please activate your wallet first."
+if (!profile) {
 
-            });
+    return res.status(404).json({
 
-        }
+        success: false,
+
+        message: "No account found with this email."
+
+    });
+
+}
 
         /*
         |--------------------------------------------------------------------------
