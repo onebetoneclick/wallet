@@ -760,7 +760,7 @@ exports.verifyLoginOTP = async (req, res) => {
         |--------------------------------------------------------------------------
         */
 
-        const {
+       const {
 
     data: profile,
 
@@ -773,8 +773,8 @@ exports.verifyLoginOTP = async (req, res) => {
     .select("*")
 
     .eq(
-        "user_id",
-        data.user.id
+        "email",
+        cleanEmail
     )
 
     .maybeSingle();
