@@ -32,7 +32,7 @@ exports.login = async (req, res) => {
 
         /*
         |--------------------------------------------------------------------------
-        | Find User Profile
+        | Find Profile
         |--------------------------------------------------------------------------
         */
 
@@ -46,25 +46,13 @@ exports.login = async (req, res) => {
 
             .from("profiles")
 
-            .select(`
-                user_id,
-                email,
-                phone,
-                full_name,
-                first_name,
-                last_name,
-                wallet_activated
-            `)
+            .select("*")
 
-            .ilike("email", email.trim())
+            .eq("email", email)
 
             .maybeSingle();
 
-        if (profileError) {
-
-            throw profileError;
-
-        }
+        if (profileError) throw profileError;
 
         if (!profile) {
 
@@ -72,7 +60,7 @@ exports.login = async (req, res) => {
 
                 success: false,
 
-                message: "User profile not found."
+                message: "No account found with this email."
 
             });
 
@@ -90,7 +78,8 @@ exports.login = async (req, res) => {
 
                 success: false,
 
-                message: "Please activate your wallet first."
+                message:
+                "Please activate your wallet first."
 
             });
 
@@ -98,7 +87,7 @@ exports.login = async (req, res) => {
 
         /*
         |--------------------------------------------------------------------------
-        | Send Login OTP
+        | Send OTP
         |--------------------------------------------------------------------------
         */
 
@@ -108,15 +97,11 @@ exports.login = async (req, res) => {
 
         } = await supabase.auth.signInWithOtp({
 
-            email: profile.email
+            email
 
         });
 
-        if (otpError) {
-
-            throw otpError;
-
-        }
+        if (otpError) throw otpError;
 
         /*
         |--------------------------------------------------------------------------
@@ -128,25 +113,7 @@ exports.login = async (req, res) => {
 
             success: true,
 
-            message: "OTP has been sent successfully.",
-
-            data: {
-
-                user_id: profile.user_id,
-
-                email: profile.email,
-
-                phone: profile.phone,
-
-                full_name: profile.full_name,
-
-                first_name: profile.first_name,
-
-                last_name: profile.last_name,
-
-                wallet_activated: profile.wallet_activated
-
-            }
+            message: "OTP sent successfully."
 
         });
 
@@ -154,13 +121,23 @@ exports.login = async (req, res) => {
 
     catch (err) {
 
-        console.error("LOGIN ERROR:", err);
+        console.error(
+
+            "LOGIN ERROR:",
+
+            err
+
+        );
 
         return res.status(500).json({
 
             success: false,
 
-            message: err.message || "Unable to login."
+            message:
+
+                err.message ||
+
+                "Unable to login."
 
         });
 
