@@ -9,6 +9,7 @@ const webhookRoutes = require("./routes/webhook");
 const withdrawRoutes = require("./routes/withdraw");
 const authRoutes = require("./routes/auth");
 const walletRoutes = require("./routes/wallet");
+const loginRoutes = require("./routes/loginRoutes");
 const bankRoutes = require("./routes/bank"); // NEW
 
 const app = express();
@@ -71,6 +72,8 @@ app.use("/api/withdraw", withdrawRoutes);
 app.use("/api/dedicated-account", dedicatedAccountRoutes);
 
 app.use("/api/wallet", walletRoutes);
+
+app.use("/api", loginRoutes);
 
 app.use("/api/bank", bankRoutes); // NEW
 
