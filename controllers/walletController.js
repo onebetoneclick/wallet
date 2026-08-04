@@ -1126,3 +1126,114 @@ exports.getExistingWallet = async (req, res) => {
     }
 
 };
+/*
+|--------------------------------------------------------------------------
+| GET WALLET STATUS
+|--------------------------------------------------------------------------
+| POST /api/wallet/status
+|--------------------------------------------------------------------------
+*/
+
+exports.getWalletStatus = async (req, res) => {
+
+    try {
+
+        const { email } = req.body;
+
+        if (!email) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message: "Email is required."
+
+            });
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find Profile
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: profile,
+            error: profileError
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select("*")
+
+            .eq("email", email)
+
+            .single();
+
+        if (profileError) throw profileError;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find Wallet
+        |--------------------------------------------------------------------------
+        */
+
+        const {
+
+            data: wallet,
+            error: walletError
+
+        } = await supabase
+
+            .from("wallets")
+
+            .select("*")
+
+            .eq("user_id", profile.user_id)
+
+            .single();
+
+        if (walletError) throw walletError;
+
+        return res.status(200).json({
+
+            success: true,
+
+            data: {
+
+                status: wallet.status,
+
+                account_number: wallet.account_number,
+
+                account_name: wallet.account_name,
+
+                bank_name: wallet.bank_name,
+
+                balance: wallet.balance,
+
+                customer_code: wallet.paystack_customer_code
+
+            }
+
+        });
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        return res.status(500).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
