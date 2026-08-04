@@ -1,6 +1,13 @@
 const crypto = require("crypto");
 
 const supabase = require("../config/supabase");
+const {
+
+    getCustomer,
+
+    createDedicatedAccount
+
+} = require("../services/paystack");
 
 /*
 |--------------------------------------------------------------------------
@@ -39,20 +46,122 @@ exports.handlePaystackWebhook = async (req, res) => {
 
         const event = JSON.parse(req.body.toString());
 
-        /*
-        |--------------------------------------------------------------------------
-        | Only Process Successful Charges
-        |--------------------------------------------------------------------------
-        */
+       /*
+|--------------------------------------------------------------------------
+| CUSTOMER IDENTIFICATION SUCCESS
+|--------------------------------------------------------------------------
+*/
 
-        if (event.event !== "charge.success") {
+if (event.event === "customeridentification.success") {
 
-            return res.status(200).json({
-                success: true,
-                message: "Event ignored"
-            });
+    console.log("Customer identification completed.");
 
-        }
+    const customerCode =
+        event.data.customer_code;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get Customer Details
+    |--------------------------------------------------------------------------
+    */
+
+    const customer =
+        await getCustomer(customerCode);
+
+    console.log(customer);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create Dedicated Account
+    |--------------------------------------------------------------------------
+    */
+
+    const dedicated =
+        await createDedicatedAccount(customerCode);
+
+    console.log(dedicated);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Find Wallet
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+
+        data: wallet
+
+    } = await supabase
+
+        .from("wallets")
+
+        .select("*")
+
+        .eq(
+            "paystack_customer_code",
+            customerCode
+        )
+
+        .maybeSingle();
+
+    if (wallet) {
+
+        await supabase
+
+            .from("wallets")
+
+            .update({
+
+                account_number:
+                    dedicated.account_number,
+
+                account_name:
+                    dedicated.account_name,
+
+                bank_name:
+                    dedicated.bank.name,
+
+                dedicated_account_id:
+                    dedicated.id,
+
+                status: "active",
+
+                updated_at:
+                    new Date().toISOString()
+
+            })
+
+            .eq("id", wallet.id);
+
+    }
+
+    return res.status(200).json({
+
+        success: true,
+
+        message:
+            "Customer identification processed."
+
+    });
+
+}
+/*
+|--------------------------------------------------------------------------
+| ONLY PROCESS SUCCESSFUL CHARGES
+|--------------------------------------------------------------------------
+*/
+
+if (event.event !== "charge.success") {
+
+    return res.status(200).json({
+
+        success: true,
+
+        message: "Event ignored"
+
+    });
+
+}
 
         const payment = event.data;
 
