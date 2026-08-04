@@ -4,8 +4,10 @@ const {
     verifyAccount,
     createCustomer,
     identifyCustomer,
+    getCustomer,
     createDedicatedAccount,
-    getDedicatedAccount
+    getDedicatedAccount,
+    initializeTransaction
 } = require("../services/paystack");
 
 /*
@@ -650,74 +652,76 @@ const {
             phone
 
         });
+/*
+|--------------------------------------------------------------------------
+| Identify Customer
+|--------------------------------------------------------------------------
+*/
 
-        /*
-        |--------------------------------------------------------------------------
-        | Identify Customer
-        |--------------------------------------------------------------------------
-        */
+const identify = await identifyCustomer(
 
-      try {
+    customer.customer_code,
 
-    const identify = await identifyCustomer(
+    {
 
-        customer.customer_code,
+        account_number,
 
-        {
+        bank_code,
 
-            country: "NG",
+        bvn,
 
-            type: "bank_account",
+        first_name,
 
-            account_number,
+        last_name
 
-            bank_code,
+    }
 
-            bvn,
+);
 
-            first_name,
+console.log("IDENTIFY SUCCESS:");
+console.log(identify);
+        
+      /*
+|--------------------------------------------------------------------------
+| Create Dedicated Account
+|--------------------------------------------------------------------------
+*/
 
-            last_name
+return res.status(200).json({
 
-        }
+    success: true,
 
-    );
+    pending: true,
 
-    console.log("IDENTIFY SUCCESS:");
-    console.log(identify);
+    message:
+        "Your identity has been submitted to Paystack. Your virtual account will be created automatically after verification.",
 
-} catch (err) {
+    data: {
 
-    console.log("IDENTIFY ERROR:");
-    console.log(err.response?.data || err);
+        customer_code:
+            customer.customer_code
 
-    throw err;
+    }
+
+});
+
+const dedicated = await createDedicatedAccount(
+    customer.customer_code
+);
+
+if (!dedicated) {
+
+    return res.status(500).json({
+
+        success: false,
+
+        message:
+            "Unable to create dedicated account."
+
+    });
 
 }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Dedicated Account
-        |--------------------------------------------------------------------------
-        */
-
-        const dedicated = await createDedicatedAccount(
-            customer.customer_code
-        );
-
-        if (!dedicated) {
-
-            return res.status(500).json({
-
-                success: false,
-
-                message:
-                    "Unable to create dedicated account."
-
-            });
-
-        }
-
+        
         /*
         |--------------------------------------------------------------------------
         | Save Wallet
