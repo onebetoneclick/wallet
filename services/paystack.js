@@ -64,21 +64,35 @@ async function identifyCustomer(customerCode, data) {
 
             type: "bank_account",
 
-            value: data.bvn,
-
             account_number: data.account_number,
-
-            bvn: data.bvn,
 
             bank_code: data.bank_code,
 
+            bvn: data.bvn,
+
             first_name: data.first_name,
 
-            last_name: data.last_name,
-
-            middle_name: data.middle_name || ""
+            last_name: data.last_name
 
         }
+
+    );
+
+    return response.data.data;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get Customer
+|--------------------------------------------------------------------------
+*/
+
+async function getCustomer(customerCode) {
+
+    const response = await paystack.get(
+
+        `/customer/${customerCode}`
 
     );
 
@@ -142,23 +156,11 @@ async function getDedicatedAccount(customerCode) {
 
         const response = await paystack.get(
 
-            "/dedicated_account"
+            `/dedicated_account?customer=${customerCode}`
 
         );
 
-        const accounts = response.data.data;
-
-        const account = accounts.find(
-
-            item =>
-
-                item.customer &&
-
-                item.customer.customer_code === customerCode
-
-        );
-
-        return account || null;
+        return response.data.data[0] || null;
 
     }
 
@@ -175,6 +177,34 @@ async function getDedicatedAccount(customerCode) {
         throw error;
 
     }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Initialize Transaction (Paystack Checkout)
+|--------------------------------------------------------------------------
+*/
+
+async function initializeTransaction(data) {
+
+    const response = await paystack.post(
+
+        "/transaction/initialize",
+
+        {
+
+            email: data.email,
+
+            amount: data.amount,
+
+            callback_url: data.callback_url
+
+        }
+
+    );
+
+    return response.data.data;
 
 }
 
@@ -306,9 +336,13 @@ module.exports = {
 
     identifyCustomer,
 
+    getCustomer,
+
     createDedicatedAccount,
 
     getDedicatedAccount,
+
+    initializeTransaction,
 
     verifyAccount,
 
