@@ -652,6 +652,36 @@ const {
             phone
 
         });
+
+        /*
+|--------------------------------------------------------------------------
+| CREATE EMPTY WALLET RECORD
+|--------------------------------------------------------------------------
+*/
+
+if (!wallet) {
+
+    await supabase
+
+        .from("wallets")
+
+        .insert({
+
+            user_id,
+
+            paystack_customer_code:
+                customer.customer_code,
+
+            balance: 0,
+
+            currency: "NGN",
+
+            status: "pending"
+
+        });
+
+}
+        
 /*
 |--------------------------------------------------------------------------
 | Identify Customer
