@@ -3,12 +3,15 @@ const express = require("express");
 const router = express.Router();
 
 const {
+
     checkAccount,
     verifyUser,
     sendActivationOTP,
     verifyActivationOTP,
     activateWallet,
-    getExistingWallet
+    getExistingWallet,
+    getWalletStatus
+
 } = require("../controllers/walletController");
 
 /*
@@ -58,5 +61,13 @@ router.post("/existing-wallet", getExistingWallet);
 */
 
 router.post("/activate", activateWallet);
+
+/*
+|--------------------------------------------------------------------------
+| Wallet Status
+|--------------------------------------------------------------------------
+*/
+
+router.post("/status", getWalletStatus);
 
 module.exports = router;
