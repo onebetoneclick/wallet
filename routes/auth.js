@@ -5,14 +5,11 @@ const router = express.Router();
 const {
 
     registerUser,
-
     verifyEmail,
-
     resendOTP,
-
     loginUser,
-
-    verifyLoginOTP
+    verifyLoginOTP,
+    testProfile
 
 } = require("../controllers/authController");
 
@@ -82,5 +79,5 @@ router.post(
 );
 
 
-
+router.post("/test-profile", testProfile);
 module.exports = router;
