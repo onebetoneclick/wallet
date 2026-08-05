@@ -753,60 +753,23 @@ exports.verifyLoginOTP = async (req, res) => {
         console.log("OTP VERIFIED USER:");
         console.log(data.user);
 
+return res.status(200).json({
 
-        /*
-        |--------------------------------------------------------------------------
-        | Get User Profile After Login
-        |--------------------------------------------------------------------------
-        */
-const emailFromOTP = data.user.email;
+    success: true,
 
-console.log("EMAIL FROM OTP:");
-console.log(emailFromOTP);
+    message: "OTP verified successfully.",
 
-const {
+    session: data.session,
 
-    data: profile,
+    user: {
 
-    error: profileError
+        id: data.user.id,
 
-} = await supabase
+        email: data.user.email
 
-    .from("profiles")
+    }
 
-    .select("*")
-
-    .eq("email", emailFromOTP)
-
-    .maybeSingle();
-
-console.log("PROFILE:");
-console.log(profile);
-
-console.log("PROFILE ERROR:");
-console.log(profileError);
-
-
-        if (profileError) {
-
-            throw profileError;
-
-        }
-
-
-
-        if (!profile) {
-
-            return res.status(404).json({
-
-                success: false,
-
-                message:
-                "User profile not found after verification."
-
-            });
-
-        }
+});
 
 
 
