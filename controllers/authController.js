@@ -759,8 +759,12 @@ exports.verifyLoginOTP = async (req, res) => {
         | Get User Profile After Login
         |--------------------------------------------------------------------------
         */
+const userId = data.session.user.id;
 
-       const {
+console.log("SESSION USER ID:");
+console.log(userId);
+
+const {
 
     data: profile,
 
@@ -772,13 +776,9 @@ exports.verifyLoginOTP = async (req, res) => {
 
     .select("*")
 
-    .ilike(
-    "email",
-    cleanEmail
-)
+    .eq("user_id", userId)
 
     .maybeSingle();
-
 
 console.log("PROFILE FOUND:");
 console.log(profile);
