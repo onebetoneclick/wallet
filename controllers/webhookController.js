@@ -135,15 +135,49 @@ if (event.event === "customeridentification.success") {
 
     }
 
+    await supabase
+
+    .from("profiles")
+
+    .update({
+
+        wallet_activated: true,
+
+        wallet_verified_at:
+            new Date().toISOString(),
+
+        updated_at:
+            new Date().toISOString()
+
+    })
+
+    .eq("user_id", wallet.user_id);
+
     return res.status(200).json({
 
-        success: true,
+    success: true,
 
-        message:
-            "Customer identification processed."
+    message:
+        "Customer identification processed.",
 
-    });
+    data: {
 
+        account_number:
+            dedicated.account_number,
+
+        account_name:
+            dedicated.account_name,
+
+        bank_name:
+            dedicated.bank.name,
+
+        status:
+            "active"
+
+    }
+
+});
+    
 }
 /*
 |--------------------------------------------------------------------------
