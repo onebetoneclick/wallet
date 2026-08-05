@@ -921,6 +921,14 @@ exports.getExistingWallet = async (req, res) => {
     try {
 
         const { email } = req.body;
+        /*
+|--------------------------------------------------------------------------
+| DEBUG EMAIL
+|--------------------------------------------------------------------------
+*/
+
+console.log("EMAIL RECEIVED:");
+console.log(email);
 
         if (!email) {
 
@@ -954,6 +962,17 @@ exports.getExistingWallet = async (req, res) => {
             .eq("email", email)
 
             .maybeSingle();
+        /*
+|--------------------------------------------------------------------------
+| DEBUG PROFILE
+|--------------------------------------------------------------------------
+*/
+
+console.log("PROFILE FOUND:");
+console.log(profile);
+
+console.log("PROFILE ERROR:");
+console.log(profileError);
 
         if (profileError) throw profileError;
 
@@ -989,6 +1008,17 @@ exports.getExistingWallet = async (req, res) => {
             .eq("user_id", profile.user_id)
 
             .maybeSingle();
+        /*
+|--------------------------------------------------------------------------
+| DEBUG WALLET
+|--------------------------------------------------------------------------
+*/
+
+console.log("WALLET FOUND:");
+console.log(wallet);
+
+console.log("WALLET ERROR:");
+console.log(walletError);
 
         if (walletError) throw walletError;
 
