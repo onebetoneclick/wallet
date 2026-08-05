@@ -759,10 +759,10 @@ exports.verifyLoginOTP = async (req, res) => {
         | Get User Profile After Login
         |--------------------------------------------------------------------------
         */
-const userId = data.session.user.id;
+const emailFromOTP = data.user.email;
 
-console.log("SESSION USER ID:");
-console.log(userId);
+console.log("EMAIL FROM OTP:");
+console.log(emailFromOTP);
 
 const {
 
@@ -776,16 +776,15 @@ const {
 
     .select("*")
 
-    .eq("user_id", userId)
+    .eq("email", emailFromOTP)
 
     .maybeSingle();
 
-console.log("PROFILE FOUND:");
+console.log("PROFILE:");
 console.log(profile);
 
 console.log("PROFILE ERROR:");
 console.log(profileError);
-
 
 
         if (profileError) {
