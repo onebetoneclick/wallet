@@ -893,3 +893,48 @@ console.log(profileError);
 | END OF AUTH CONTROLLER
 |--------------------------------------------------------------------------
 */
+exports.testProfile = async (req, res) => {
+
+    try {
+
+        const { email } = req.body;
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase
+
+            .from("profiles")
+
+            .select("*")
+
+            .eq("email", email)
+
+            .maybeSingle();
+
+        if (error) throw error;
+
+        return res.status(200).json({
+
+            success: true,
+
+            data
+
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
